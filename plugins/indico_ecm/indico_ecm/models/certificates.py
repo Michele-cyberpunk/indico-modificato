@@ -52,10 +52,11 @@ class Certificate(db.Model):
         nullable=False,
         default=CertificateState.draft
     )
-    #: The generated file in the receipts module
+    #: The generated file in the receipts module, keyed by its file id
+    #: (`ReceiptFile` has no surrogate key: its primary key is `file_id`)
     receipt_file_id = db.Column(
         db.Integer,
-        db.ForeignKey('event_registration.receipt_files.id'),
+        db.ForeignKey('event_registration.receipt_files.file_id'),
         index=True,
         nullable=True
     )
@@ -124,3 +125,39 @@ class Certificate(db.Model):
 
     def __repr__(self):
         return format_repr(self, 'id', 'state', _text=self.number)
+
+
+class CertificateSequence(db.Model):
+    """The certificate counter of a provider, one row per year.
+
+    Numbering has to be gapless and unique, and two batches may run at the same
+    time. Deriving the next number from `max(number)` cannot be locked in
+    PostgreSQL (`FOR UPDATE` is not allowed with an aggregate), so the counter
+    is a row and is incremented atomically with an upsert.
+    """
+
+    __tablename__ = 'certificate_sequences'
+    __table_args__ = (db.Index('ix_uq_certificate_sequences', 'provider_id', 'year', unique=True),
+                      {'schema': 'plugin_ecm'})
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+    provider_id = db.Column(
+        db.Integer,
+        db.ForeignKey('plugin_ecm.providers.id'),
+        nullable=False
+    )
+    year = db.Column(
+        db.Integer,
+        nullable=False
+    )
+    last_number = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0
+    )
+
+    def __repr__(self):
+        return format_repr(self, 'id', 'provider_id', 'year', 'last_number')

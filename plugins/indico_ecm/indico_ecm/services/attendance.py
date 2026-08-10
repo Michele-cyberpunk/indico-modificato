@@ -21,6 +21,16 @@ from indico_ecm.services.credit_rules import Interval, ProgramSlot
 NON_TRAINING_KEYWORDS = ('pausa', 'coffee', 'lunch', 'pranzo', 'registrazione dei partecipanti', 'welcome')
 
 
+def event_session_blocks(event):
+    """Every session block of an event.
+
+    Indico has no direct `event.session_blocks`: blocks hang off sessions, and a
+    block only has times once it is placed in the timetable.
+    """
+    for session in event.sessions:
+        yield from session.blocks
+
+
 def build_program(event, *, include_all_blocks=False):
     """Build the accredited program of an event from its timetable.
 
@@ -29,7 +39,7 @@ def build_program(event, *, include_all_blocks=False):
     counting, so they neither add nor subtract training time.
     """
     slots = []
-    for block in event.session_blocks:
+    for block in event_session_blocks(event):
         if block.start_dt is None or block.end_dt is None:
             continue
         title = (block.full_title or '').casefold()

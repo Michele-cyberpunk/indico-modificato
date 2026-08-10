@@ -84,8 +84,11 @@ def approve(approval, *, user, note=''):
 
     apply_func = _APPLIERS.get(approval.action)
     if apply_func is None:
-        logger.warning('no applier registered for action %s', approval.action)
-        return approval
+        # the approval stays approved-but-not-applied on purpose: a reviewer must
+        # never be left believing something happened when nothing did
+        logger.error('no applier registered for action %s (approval %d approved but not applied)',
+                     approval.action, approval.id)
+        raise ApprovalError(f"nessun esecutore registrato per l'azione {approval.action}")
     apply_func(approval, user)
     approval.state = ApprovalState.applied
     approval.applied_dt = now_utc()

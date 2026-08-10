@@ -77,14 +77,16 @@ def claim_due(limit=10, *, owner=None, lease_seconds=DEFAULT_LEASE_SECONDS, kind
     """
     owner = owner or worker_id()
     now = now_utc()
-    query = (AgentTask.query
-             .filter(AgentTask.status == TaskStatus.pending, AgentTask.run_after <= now)
+    query = AgentTask.query.filter(AgentTask.status == TaskStatus.pending, AgentTask.run_after <= now)
+    if kinds:
+        # the filter has to come before limit(): SQLAlchemy refuses to narrow a
+        # query that already has a LIMIT
+        query = query.filter(AgentTask.kind.in_(kinds))
+    tasks = (query
              .order_by(AgentTask.priority.desc(), AgentTask.run_after)
              .limit(limit)
-             .with_for_update(skip_locked=True, of=AgentTask))
-    if kinds:
-        query = query.filter(AgentTask.kind.in_(kinds))
-    tasks = query.all()
+             .with_for_update(skip_locked=True, of=AgentTask)
+             .all())
     for task in tasks:
         task.status = TaskStatus.leased
         task.lease_owner = owner
@@ -109,14 +111,15 @@ def reclaim_expired(limit=100):
              .with_for_update(skip_locked=True, of=AgentTask)
              .all())
     for task in tasks:
-        if should_give_up(task.attempts, task.max_attempts):
-            task.status = TaskStatus.failed
-            task.last_error = 'lease expired and no attempts left'
-        else:
-            task.status = TaskStatus.pending
-            task.run_after = next_run_after(now, task.attempts, rand=random.random)
+        give_up = should_give_up(task.attempts, task.max_attempts)
+        next_attempt = None if give_up else next_run_after(now, task.attempts, rand=random.random)
+        task.status = TaskStatus.failed if give_up else TaskStatus.pending
         task.lease_owner = None
         task.lease_expires_dt = None
+        if give_up:
+            task.last_error = 'lease expired and no attempts left'
+        else:
+            task.run_after = next_attempt
         task.updated_dt = now
     if tasks:
         logger.warning('reclaimed %d expired task leases', len(tasks))
@@ -148,15 +151,17 @@ def fail(task, error, *, retry=True):
     evidence that work was requested and never done, which someone has to see.
     """
     now = now_utc()
-    task.last_error = str(error)[:2000]
+    # read everything before writing anything: touching an expired attribute
+    # mid-update triggers an autoflush of a half-written row
+    will_retry = retry and not should_give_up(task.attempts, task.max_attempts)
+    next_attempt = next_run_after(now, task.attempts, rand=random.random) if will_retry else None
+    task.status = TaskStatus.pending if will_retry else TaskStatus.failed
     task.lease_owner = None
     task.lease_expires_dt = None
+    task.last_error = str(error)[:2000]
     task.updated_dt = now
-    if retry and not should_give_up(task.attempts, task.max_attempts):
-        task.status = TaskStatus.pending
-        task.run_after = next_run_after(now, task.attempts, rand=random.random)
-    else:
-        task.status = TaskStatus.failed
+    if next_attempt is not None:
+        task.run_after = next_attempt
     db.session.flush()
     return task
 

@@ -13,6 +13,8 @@ portando dentro Indico i moduli agentici, CRM e di automazione di
 | [02-mosaico-file.md](02-mosaico-file.md) | Per ogni repository, l'albero dei file da estrarre e la mappa "tessera → destinazione" |
 | [03-agenti-ai.md](03-agenti-ai.md) | ⭐ Porting del layer agentico di `trycompai/crm` dentro Indico: runtime, coda, tool, skill, governance |
 | [04-crm-in-indico.md](04-crm-in-indico.md) | ⭐ CRM nativo dentro Indico: modelli, legami con gli oggetti Indico, segnali di innesto |
+| [05-da-cyberbrain.md](05-da-cyberbrain.md) | Migrazione del gestionale attuale: cosa è stato portato, cosa è cambiato e perché |
+| [06-stato-produzione.md](06-stato-produzione.md) | ⭐ Cosa è verificato su ambiente reale, i bug trovati, cosa manca davvero |
 
 ## La direzione
 

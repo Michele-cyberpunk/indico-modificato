@@ -14,12 +14,12 @@ trail.
 import hashlib
 import secrets
 
-from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert
 
 from indico.core.db import db
 from indico.util.date_time import now_utc
 
-from indico_ecm.models.certificates import Certificate, CertificateState
+from indico_ecm.models.certificates import Certificate, CertificateSequence, CertificateState
 from indico_ecm.models.credits import AssignmentState
 
 
@@ -30,16 +30,19 @@ class CertificateError(Exception):
 def next_number(provider, year):
     """Allocate the next certificate number for a provider and year.
 
-    The counter is derived from the stored rows under a row lock, so two
-    concurrent batches cannot produce the same number.
+    The counter is a row, incremented with an upsert that returns the new value:
+    two batches running at the same time get two different numbers, and the
+    sequence has no gaps. (`max(number) FOR UPDATE` cannot be used — PostgreSQL
+    rejects row locking on an aggregate.)
     """
     prefix = provider.settings.get('certificate_prefix') or 'ECM'
-    pattern = f'{prefix}-{year}-%'
-    last = (db.session.query(func.max(Certificate.number))
-            .filter(Certificate.number.like(pattern))
-            .with_for_update()
-            .scalar())
-    sequence = int(last.rsplit('-', 1)[1]) + 1 if last else 1
+    table = CertificateSequence.__table__
+    statement = (insert(table)
+                 .values(provider_id=provider.id, year=year, last_number=1)
+                 .on_conflict_do_update(index_elements=['provider_id', 'year'],
+                                        set_={'last_number': table.c.last_number + 1})
+                 .returning(table.c.last_number))
+    sequence = db.session.execute(statement).scalar()
     return f'{prefix}-{year}-{sequence:06d}'
 
 

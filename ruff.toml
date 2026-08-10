@@ -172,6 +172,8 @@ parenthesize-tuple-in-subscript = true
 'indico/core/signals/__init__.py' = ['F403', 'F401']
 # allow long lines in migrations (only do that for raw SQL please)
 'indico/migrations/versions/*.py' = ['E501', 'D400']
+# plugin migrations are generated from the models: same rules as core migrations
+'plugins/*/*/migrations/*.py' = ['E501', 'D400', 'F401', 'ISC001']
 # allow stuff that's useful in tests
 'indico/*_test.py' = ['E221', 'E241', 'E272', 'N802', 'S105', 'S106', 'PLC1901', 'ISC004']
 # sphinx config has many commented-out variables with no space after `#`

@@ -43,7 +43,12 @@ class AgentTask(db.Model):
 
     __tablename__ = 'agent_tasks'
     __table_args__ = (db.CheckConstraint('attempts >= 0 AND max_attempts > 0', 'valid_attempts'),
-                      db.CheckConstraint('(status = 2) = (lease_expires_dt IS NOT NULL)', 'lease_consistency'),
+                      #: a lease is an owner plus an expiry, never one without the other
+                      db.CheckConstraint('(lease_owner IS NULL) = (lease_expires_dt IS NULL)', 'lease_pair'),
+                      #: only a leased or running task may hold one. Deliberately not an
+                      #: equality: an attribute load can autoflush a half-updated row, and a
+                      #: constraint must describe the invariant, not the order of assignments
+                      db.CheckConstraint('status IN (2, 3) OR lease_expires_dt IS NULL', 'no_stale_lease'),
                       db.Index('ix_agent_tasks_claimable', 'status', 'run_after', 'priority'),
                       db.Index('ix_agent_tasks_subject', 'subject_type', 'subject_id'),
                       db.Index('ix_uq_agent_tasks_pending', 'kind', 'subject_type', 'subject_id', unique=True,
