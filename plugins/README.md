@@ -63,7 +63,8 @@ cd plugins/indico_agents && PYTHONPATH=. python -m pytest indico_agents -q -c /d
 `-p no:indico` evita di caricare il plugin pytest di Indico, che richiede
 l'applicazione completa: questi test coprono di proposito solo la logica pura
 (corrispondenza di identità, regole crediti, serializzazione delle regole,
-backoff della coda, tabella dei permessi degli agenti), 123 test in tutto.
+schema e import dell'archivio legacy, template, costi, promemoria, automator,
+backoff della coda, tabella dei permessi degli agenti), 292 test in tutto.
 
 Il resto — modelli, controller, segnali — richiede un ambiente Indico completo
 con PostgreSQL.

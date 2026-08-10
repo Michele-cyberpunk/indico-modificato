@@ -43,16 +43,24 @@ TOOL_POLICIES = {
     'simulate_credits': ToolPolicy(AutonomyLevel.read_only),
     'list_certificate_candidates': ToolPolicy(AutonomyLevel.read_only),
     'write_brief': ToolPolicy(AutonomyLevel.read_only),
+    'inspect_event_checklist': ToolPolicy(AutonomyLevel.read_only),
+    'list_due_reminders': ToolPolicy(AutonomyLevel.read_only),
+    'invitation_costs': ToolPolicy(AutonomyLevel.read_only),
+    'prepare_graphic_brief': ToolPolicy(AutonomyLevel.read_only),
     # drafting: produces proposals a person applies
     'draft_email': ToolPolicy(AutonomyLevel.drafting, writes=True, requires_approval=True),
     'link_contact': ToolPolicy(AutonomyLevel.drafting, writes=True, requires_approval=True),
     'create_contact': ToolPolicy(AutonomyLevel.drafting, writes=True, requires_approval=True),
     'prepare_certificate_batch': ToolPolicy(AutonomyLevel.drafting, writes=True, requires_approval=True),
+    'draft_accreditation_request': ToolPolicy(AutonomyLevel.drafting, requires_approval=True),
+    'prepare_invitation_letters': ToolPolicy(AutonomyLevel.drafting, requires_approval=True),
     # acting: non-regulatory writes, audited
     'record_fact': ToolPolicy(AutonomyLevel.acting, writes=True),
     'create_task': ToolPolicy(AutonomyLevel.acting, writes=True),
     'schedule_recheck': ToolPolicy(AutonomyLevel.acting, writes=True),
     'enrich_company': ToolPolicy(AutonomyLevel.acting, writes=True),
+    'create_checklist': ToolPolicy(AutonomyLevel.acting, writes=True),
+    'create_reminder': ToolPolicy(AutonomyLevel.acting, writes=True),
     'research_company': ToolPolicy(AutonomyLevel.acting),
 }
 

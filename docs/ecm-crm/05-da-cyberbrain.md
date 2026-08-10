@@ -26,68 +26,120 @@ Analisi svolta su `f417c64` (clone del 2026-08).
 Ricavato da `events.js` e `utils.js`:
 
 ```text
-evento
-├── nomeEvento          ├── accreditamento     (Sì/No)
-├── dataEvento1/2       ├── contrattiSponsor   (Sì/No)
-├── luogo · citta       ├── grafica            (Sì/No)
-├── tipoEvento          ├── letteraIncarico    (Sì/No)
-├── cliente (sponsor)   ├── slideKit           (Sì/No)
-├── codiceEvento        └── note
-├── nomeCartella  ← generata: "MMDD[-DD] NOME CITTÀ|FAD SPONSOR CODICE NOTE"
-└── uecm          ← referente dell'ufficio accreditamento
+evento (55 colonne)
+├── identità            ├── workflow (17 colonne Sì/No)
+│   ├── nomeEvento      │   ├── attivazione
+│   ├── codiceEvento    │   ├── primoContattoRelatori
+│   ├── cliente         │   ├── accreditamento
+│   ├── dataEvento1/2   │   ├── contrattiSponsor
+│   ├── citta · luogo   │   ├── opzioneSede · contrattoHotel · briefHotel
+│   ├── orario          │   ├── catering · numePiattaforma
+│   ├── tipoEvento      │   ├── grafica · stampaGrafiche
+│   └── numeroPartec.   │   ├── letteraIncarico · slideKit
+├── ECM                 │   ├── hostess · foglioLogistica
+│   ├── codieAgenas     │   └── consuntivo · invio
+│   ├── creditiEvento   ├── faculty
+│   └── uecm            │   └── relatore1..5 + mail1..5
+├── cartella            ├── fornitori
+│   └── nomeCartella    │   └── emailNume · emailGrafico · emailHostess
+└── accreditamento email
+    └── To · CC · BCC · Subject · Body
 ```
 
-Le cinque colonne Sì/No sono il cuore operativo: il cruscotto segnala come
-problematico ogni evento futuro con almeno una di esse a "No".
+Le colonne Sì/No sono il cuore operativo: il cruscotto segnala come problematico
+ogni evento futuro con almeno una di esse a "No". Accanto vivono altre due
+tabelle: la stampa unione (24 colonne, inclusi i costi di ospitalità per medico)
+e i promemoria speciali.
 
-## Già portato nella piattaforma ✅
+## Portato nella piattaforma ✅
 
-Tutto in `plugins/indico_ecm/indico_ecm/services/`, come funzioni pure con test
-di regressione (44 test): il comportamento è **congelato**, non reinterpretato.
+Tutto in `plugins/indico_ecm` e `plugins/indico_agents`, come funzioni pure con
+test di regressione: il comportamento è **congelato**, non reinterpretato.
 
-| Regola originale | Dove ora | Nota |
-|---|---|---|
-| `generateFolderName()` | `naming.py` | Stesso ordine, stesso `PLURISPONSOR`, stesso trattamento di FAD/WEB |
-| Percorso `S:\CONGRESSI <anno>\...` | `naming.py::folder_path` | Il collegamento con il disco condiviso resta valido |
-| `pluralizzaRuolo()` | `letters.py::pluralize_role` | Stessa regola ingenua (parole in `-o`/`-e` → `-i`) |
-| Termini concordati (`medici`, `chirurghi`, …) | `letters.py::agreement_terms` | |
-| Nome file `Lettera invito - N MEDICI - …` | `letters.py::invitation_filename` | I file sono archiviati e cercati per nome |
-| Placeholder del `.docx` | `letters.py::letter_context` | |
-| `identifyMedicalSpecialty()` | `specialty.py` | Keyword e palette CMYK/RGB identiche |
-| `identifyEventType()` | `specialty.py::identify_event_format` | Stesso ordine di test e stesso fallback |
-| Email di accreditamento | `accreditation_mail.py` | Testo **verbatim**, più escaping HTML dei campi |
-| URL di composizione Outlook | `accreditation_mail.py::outlook_compose_url` | Il flusso resta: la piattaforma prepara, la persona invia |
-| Le 5 colonne Sì/No | `deliverables.py` + `models/deliverables.py` | Con l'aggiunta dei tempi di anticipo |
+### Regole operative
+
+| Regola originale | Dove ora |
+|---|---|
+| `generateFolderName()` + percorso `S:\CONGRESSI` | `services/naming.py` |
+| `pluralizzaRuolo()`, termini concordati, nomi file lettere | `services/letters.py` |
+| Placeholder del `.docx` | `services/letters.py::letter_context` |
+| `identifyMedicalSpecialty()` + `identifyEventType()` | `services/specialty.py` |
+| Email di accreditamento + URL Outlook | `services/accreditation_mail.py` |
+| Le colonne Sì/No | `services/deliverables.py` + `models/deliverables.py` |
+
+### Schema, workflow e archivio
+
+| Originale | Dove ora |
+|---|---|
+| `eventColumns` (55 campi) | `services/event_schema.py::EVENT_FIELDS`, con la destinazione di ogni colonna |
+| `stampaUnioneColumns` (24 campi) | `services/event_schema.py::INVITATION_FIELDS` |
+| `specialReminderColumns` | `services/event_schema.py::REMINDER_FIELDS` |
+| I 17 flag Sì/No | `Deliverable` (19 voci: le 17 storiche più inviti e documenti faculty) |
+| Campi operativi (codice, cartella, UECM, email fornitori, accreditamento To/CC/BCC) | `models/operations.py::EventOperations` |
+| Promemoria speciali | `models/operations.py::SpecialReminder` + `services/reminders.py` |
+| Righe di stampa unione e costi | `models/operations.py::InvitationBatch` + `services/costs.py` |
+| Import dell'archivio esistente | `services/legacy_import.py` (eventi, stampa unione, promemoria, con elenco dei problemi riga per riga) |
+
+### Template e automator
+
+| Originale | Dove ora |
+|---|---|
+| Template email sparsi nelle view | `services/templates.py`: registro unico, 8 template versionati con segnaposto dichiarati |
+| `templates/lettera_invito.docx` | `indico_ecm/templates/letters/lettera_invito.docx` |
+| File della cartella evento (`info_evento.txt`, `briefing.txt`, `agenda.txt`, `report_template.txt`, `email_draft.html`) | `services/templates.py::EVENT_FOLDER_FILES` |
+| `AUTOMATOR_PROMPT` + `automatorResponseSchema` | `services/automator.py`, prompt versionato e con hash |
+| Estrazione dati dall'email | `services/automator.py::extract`, deterministica (codice, date, relatori, specialità) |
+
+### Agenti che eseguono il workflow
+
+| Agente | Cosa fa |
+|---|---|
+| `event_setup_agent` | Alla creazione di un evento crea la checklist completa e calcola la cartella |
+| `checklist_agent` | Ogni giorno rilegge le scadenze e apre una segnalazione per ogni voce in ritardo, poi si riprogramma |
+| `registration_agent`, `contact_resolution_agent` | Dati mancanti per l'attestato, corrispondenza con l'anagrafica |
+| `attendance_agent`, `credit_agent` | Anomalie di presenza, proposta di crediti dal motore deterministico |
+
+Strumenti disponibili agli agenti sopra questo strato: `inspect_event_checklist`,
+`list_due_reminders`, `invitation_costs`, `prepare_graphic_brief`,
+`draft_accreditation_request`, `prepare_invitation_letters`.
 
 ### Cosa è cambiato, e perché
 
 **I flag hanno guadagnato una scadenza.** "Grafica: No" non significa niente a
 tre mesi e tutto a quattro giorni. `DEFAULT_LEAD_TIMES` assegna a ogni voce i
-giorni di anticipo (accreditamento 90, contratti 60, inviti 45, grafica 21,
-lettere 14, slide kit 7) e lo stato diventa `calm → due → late → missed`. È
-questa la differenza che permette a un agente di aprire l'attività **al momento
-giusto** invece di elencare ogni giorno tutto ciò che manca.
+giorni di anticipo e lo stato diventa `calm → due → late → missed`. Consuntivo e
+invio hanno un anticipo negativo: sono attesi *dopo* l'evento, e non risultano
+scaduti il giorno dopo.
 
-**L'accreditamento è l'unico che blocca i crediti** (`is_blocking_credits`): gli
-altri sono ritardi organizzativi, quello è un evento che non può erogare crediti.
+**I promemoria non si perdono più.** L'originale mostrava un promemoria solo nel
+giorno esatto: un giorno di assenza e non lo vedeva nessuno. Ora resta aperto
+finché qualcuno non lo chiude, e riporta di quanti giorni è in ritardo.
 
-**I campi utente vengono escapati** nell'email: il testo è identico, ma
-`<script>` in un nome evento non arriva più intatto nel corpo HTML.
+**L'accreditamento è l'unico che blocca i crediti** (`is_blocking_credits`).
 
-## Da migrare, non ancora fatto
+**I campi utente vengono escapati** in tutti i template: un `<script>` in un nome
+evento non arriva più intatto nel corpo HTML.
 
-| Funzione | Dove va | Priorità |
+**Nell'automator la piattaforma decide, il modello descrive.** Codice evento,
+date e nome cartella sono estratti da regole; se il modello ne propone di
+diversi, vince la piattaforma e la divergenza viene registrata come conflitto.
+Il prompt vieta esplicitamente di dichiarare crediti.
+
+**I costi di ospitalità si sommano.** Erano stampati sulla lettera e basta: ora
+`services/costs.py` produce il totale per medico, per evento, e il confronto con
+il budget dello sponsor.
+
+## Da completare
+
+| Funzione | Cosa manca | Priorità |
 |---|---|---|
-| Anagrafica evento e cruscotto scadenze | UI di `indico_ecm` sopra `EventDeliverable` | ⭐⭐⭐ |
-| Generazione `.docx` delle lettere | `indico_ecm/services/letters.py` + template in `templates/letters/` | ⭐⭐⭐ |
-| Stampa unione da foglio ospedali | Import CSV/XLSX → `InvitationRow` → batch di lettere | ⭐⭐⭐ |
-| Email di accreditamento come azione approvabile | `indico_agents` `draft_email` + coda approvazioni | ⭐⭐ |
-| Brief grafico | Tool `graphic_brief` già pronto: manca la vista e l'invio al designer | ⭐⭐ |
-| Promemoria | `reminders` di Indico + `AgentTask` con `run_after` | ⭐⭐ |
-| Automator (analisi AI di email/documenti) | Agente `event_setup` con runtime LLM | ⭐ |
-| Auth, RBAC, secure store | **Non migrare**: Indico ha già utenti, gruppi, ACL e permessi | — |
-| Integrazione Gemini | Sostituire con l'astrazione modello del layer agenti | ⭐ |
-| UI Next.js `app/` | **Non migrare**: l'interfaccia è quella di Indico | — |
+| Lettere `.docx` | Il rendering del template Word con `letter_context` (serve `python-docx`) | ⭐⭐⭐ |
+| Import archivio | La UI e la scrittura su database: la trasformazione è pronta e testata | ⭐⭐⭐ |
+| Anagrafica evento | Le viste sopra `EventOperations` e `EventDeliverable` | ⭐⭐⭐ |
+| Stampa unione | Import CSV/XLSX del foglio ospedali verso `InvitationBatch` | ⭐⭐ |
+| Automator | Il runtime LLM che esegue `build_request` e `validate_response` | ⭐⭐ |
+| Brochure e sfondi generati | `generateMedicalBrochure`, `createMedicalBackground`: funzione di generazione immagini, da rivalutare | ⭐ |
+| Voice control | `js/core/voice.js`: mai citato come necessario, non portato | — |
 
 ## Cosa non portare, e perché
 

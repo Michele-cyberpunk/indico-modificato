@@ -23,14 +23,50 @@ from enum import StrEnum
 
 
 class Deliverable(StrEnum):
+    """The preparation checklist of an event.
+
+    One value per yes/no column of the legacy event manager, with the same
+    meaning, so historical rows import without interpretation.
+    """
+
+    #: attivazione
+    activation = 'activation'
+    #: primo contatto relatori
+    faculty_first_contact = 'faculty_first_contact'
+    #: accreditamento
     accreditation = 'accreditation'
+    #: contratti sponsor
     sponsor_contract = 'sponsor_contract'
+    #: opzione sede
+    venue_option = 'venue_option'
+    #: contratto hotel
+    hotel_contract = 'hotel_contract'
+    #: brief hotel
+    hotel_brief = 'hotel_brief'
+    #: catering
+    catering = 'catering'
+    #: NUME / piattaforma
+    platform = 'platform'
+    #: grafica
     graphics = 'graphics'
+    #: stampa grafiche
+    graphics_printing = 'graphics_printing'
+    #: lettera d'incarico
     assignment_letter = 'assignment_letter'
-    slide_kit = 'slide_kit'
+    #: inviti (stampa unione)
     invitations = 'invitations'
+    #: documenti faculty (CV, dichiarazioni, conflitti)
     faculty_documents = 'faculty_documents'
-    venue = 'venue'
+    #: slide kit
+    slide_kit = 'slide_kit'
+    #: hostess
+    hostess = 'hostess'
+    #: foglio logistica
+    logistics_sheet = 'logistics_sheet'
+    #: consuntivo
+    final_report = 'final_report'
+    #: invio
+    dispatch = 'dispatch'
 
 
 class DeliverableState(StrEnum):
@@ -55,14 +91,26 @@ class Urgency(StrEnum):
 #: Accreditation dominates: a dossier filed late is not a delay, it is an event
 #: that cannot grant credits.
 DEFAULT_LEAD_TIMES = {
+    Deliverable.activation: 120,
     Deliverable.accreditation: 90,
+    Deliverable.faculty_first_contact: 75,
     Deliverable.sponsor_contract: 60,
+    Deliverable.venue_option: 60,
+    Deliverable.hotel_contract: 45,
     Deliverable.invitations: 45,
+    Deliverable.catering: 30,
+    Deliverable.platform: 30,
     Deliverable.faculty_documents: 30,
-    Deliverable.venue: 30,
     Deliverable.graphics: 21,
     Deliverable.assignment_letter: 14,
+    Deliverable.graphics_printing: 10,
+    Deliverable.hostess: 10,
+    Deliverable.hotel_brief: 10,
+    Deliverable.logistics_sheet: 7,
     Deliverable.slide_kit: 7,
+    #: after the event, so the lead time is negative
+    Deliverable.final_report: -30,
+    Deliverable.dispatch: -15,
 }
 
 
@@ -91,9 +139,12 @@ def status_for(deliverable, state, event_date, today, *, lead_times=None):
     """Where one deliverable stands, relative to its lead time."""
     days_to_event = (event_date - today).days if event_date else 0
     deadline = deadline_for(deliverable, event_date, lead_times)
+    #: deliverables due after the event (final report, dispatch) have a deadline
+    #: later than the event itself, so the point of no return is whichever comes last
+    last_chance = max(event_date, deadline) if (event_date and deadline) else (event_date or deadline)
     if state in (DeliverableState.done, DeliverableState.not_applicable):
         urgency = Urgency.calm
-    elif event_date is not None and today > event_date:
+    elif last_chance is not None and today > last_chance:
         urgency = Urgency.missed
     elif deadline is not None and today > deadline:
         urgency = Urgency.late

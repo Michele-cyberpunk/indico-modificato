@@ -48,9 +48,9 @@ class AgentsPlugin(IndicoPlugin):
     def init(self):
         super().init()
         # importing the modules registers the agents and the tools
-        from indico_agents.agents import credit_agent, registration_agent  # noqa: F401
+        from indico_agents.agents import credit_agent, event_agent, registration_agent  # noqa: F401
         from indico_agents.runtime import dispatch  # noqa: F401
-        from indico_agents.tools import ecm  # noqa: F401
+        from indico_agents.tools import ecm, operations  # noqa: F401
         self.connect(signals.menu.items, self._extend_admin_menu, sender='admin-sidemenu')
 
     def get_blueprints(self):
