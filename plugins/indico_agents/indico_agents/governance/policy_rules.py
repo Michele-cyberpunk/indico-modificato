@@ -49,8 +49,6 @@ TOOL_POLICIES = {
     'prepare_graphic_brief': ToolPolicy(AutonomyLevel.read_only),
     # drafting: produces proposals a person applies
     'draft_email': ToolPolicy(AutonomyLevel.drafting, writes=True, requires_approval=True),
-    'link_contact': ToolPolicy(AutonomyLevel.drafting, writes=True, requires_approval=True),
-    'create_contact': ToolPolicy(AutonomyLevel.drafting, writes=True, requires_approval=True),
     'prepare_certificate_batch': ToolPolicy(AutonomyLevel.drafting, writes=True, requires_approval=True),
     'draft_accreditation_request': ToolPolicy(AutonomyLevel.drafting, requires_approval=True),
     'prepare_invitation_letters': ToolPolicy(AutonomyLevel.drafting, requires_approval=True),
@@ -63,6 +61,11 @@ TOOL_POLICIES = {
     'create_reminder': ToolPolicy(AutonomyLevel.acting, writes=True),
     'research_company': ToolPolicy(AutonomyLevel.acting),
 }
+
+#: Names that are approval actions rather than tools: an agent proposes them
+#: through `request_approval`, and a person's approval is what performs them.
+#: They are intentionally absent from the table above.
+APPROVAL_ACTIONS = frozenset({'link_contact', 'create_contact', 'send_email', 'issue_certificates'})
 
 FORBIDDEN_FOR_AGENTS = frozenset({
     'approve_credits',

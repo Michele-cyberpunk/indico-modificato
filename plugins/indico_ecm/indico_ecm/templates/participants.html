@@ -1,0 +1,82 @@
+{% extends 'events/management/base.html' %}
+{% from 'ecm:_macros.html' import csrf, nav, state_label %}
+
+{% block title %}{% trans %}Crediti{% endtrans %}{% endblock %}
+
+{% block content %}
+    {{ nav(event, 'ecm.participants') }}
+
+    {% if not accreditation %}
+        <div class="i-callout">{% trans %}Serve prima un dossier di accreditamento.{% endtrans %}</div>
+    {% else %}
+        <form method="POST" action="{{ url_for_plugin('ecm.evaluate', event) }}" style="margin-bottom:1em">
+            {{ csrf() }}
+            <button class="i-button highlight" type="submit">{% trans %}Rivaluta tutti{% endtrans %}</button>
+            <span style="margin-left:1em;color:#666">
+                {% trans %}La valutazione non assegna nulla: produce proposte.{% endtrans %}
+                {% if program_minutes %}Programma accreditato: {{ program_minutes }} minuti.{% endif %}
+            </span>
+        </form>
+
+        <table class="i-table-widget">
+            <thead>
+                <tr>
+                    <th>Partecipante</th><th>Presenza</th><th>Questionario</th>
+                    <th>Esito regole</th><th>Assegnazione</th><th>Attestato</th><th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr>
+                        <td>{{ row.registration.first_name }} {{ row.registration.last_name }}<br>
+                            <small>{{ row.registration.email }}</small></td>
+                        <td>
+                            {% if row.outcome %}
+                                {{ row.outcome.attended_minutes }}/{{ row.outcome.program_minutes }} min
+                                ({{ (row.outcome.attendance_ratio * 100) | round(1) }}%)
+                            {% else %}—{% endif %}
+                            {% if row.open %}<br><span style="color:#c2410c">{{ row.open }} presenze aperte</span>{% endif %}
+                        </td>
+                        <td>{% if row.outcome and row.outcome.assessment_ratio is not none %}
+                                {{ (row.outcome.assessment_ratio * 100) | round(1) }}%
+                            {% else %}—{% endif %}</td>
+                        <td>
+                            {% if row.outcome %}
+                                {% if row.outcome.eligible %}
+                                    <span style="color:#15803d">idoneo — {{ row.outcome.credits }} crediti</span>
+                                {% else %}
+                                    <span style="color:#b91c1c">non idoneo</span><br>
+                                    <small>{{ row.outcome.reasons | map(attribute='value') | join(', ') }}</small>
+                                {% endif %}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>{% if row.assignment %}{{ state_label(row.assignment.state.name) }}
+                                <br><small>{{ row.assignment.credits }} crediti</small>{% else %}—{% endif %}</td>
+                        <td>{% if row.certificate %}
+                                <a href="{{ url_for_plugin('ecm.certificate_download', event, certificate_id=row.certificate.id) }}">
+                                    {{ row.certificate.number }}</a>
+                            {% else %}—{% endif %}</td>
+                        <td>
+                            {% if row.assignment and row.assignment.state.name == 'proposed' %}
+                                <form method="POST"
+                                      action="{{ url_for_plugin('ecm.assignment_action', event, assignment_id=row.assignment.id) }}">
+                                    {{ csrf() }}
+                                    <input type="hidden" name="action" value="approve">
+                                    <button class="i-button highlight" type="submit">Approva</button>
+                                </form>
+                            {% elif row.assignment and row.assignment.state.name == 'approved' %}
+                                <form method="POST"
+                                      action="{{ url_for_plugin('ecm.assignment_action', event, assignment_id=row.assignment.id) }}">
+                                    {{ csrf() }}
+                                    <input type="hidden" name="action" value="revoke">
+                                    <input name="reason" placeholder="motivo" required size="12">
+                                    <button class="i-button" type="submit">Revoca</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

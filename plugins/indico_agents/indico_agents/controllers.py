@@ -3,12 +3,13 @@
 #
 # Licensed under the MIT License; see the LICENSE file for details.
 
-from flask import jsonify, request, session
+from flask import flash, jsonify, redirect, request, session
 
 from indico.core.db import db
-from indico.core.plugins import WPJinjaMixinPlugin
+from indico.core.plugins import WPJinjaMixinPlugin, url_for_plugin
 from indico.modules.admin import RHAdminBase
 from indico.modules.admin.views import WPAdmin
+from indico.util.i18n import _
 
 from indico_agents.governance import approvals as approval_service
 from indico_agents.governance.kill_switch import agents_enabled, set_agents_enabled
@@ -46,25 +47,44 @@ class RHToggleAgents(RHAdminBase):
     """The kill switch."""
 
     def _process(self):
-        enabled = request.json.get('enabled', False) if request.is_json else False
+        payload = request.json if request.is_json else request.form
+        enabled = payload.get('enabled') in (True, 'true', '1', 'on')
         set_agents_enabled(enabled, user=session.user)
-        return jsonify(enabled=agents_enabled())
+        if request.is_json:
+            return jsonify(enabled=agents_enabled())
+        return redirect(url_for_plugin('agents.dashboard'))
 
 
 class RHApprovalDecision(RHAdminBase):
-    """Approve or reject a proposed action."""
+    """Approve or reject a proposed action.
+
+    Approving applies the change: if the applier fails, the transaction is rolled
+    back and the proposal stays pending, because a reviewer must never be told
+    something happened when it did not.
+    """
 
     def _process_args(self):
         self.approval = Approval.get_or_404(request.view_args['approval_id'])
 
     def _process(self):
-        decision = (request.json or {}).get('decision')
-        note = (request.json or {}).get('note', '')
-        if decision == 'approve':
-            approval_service.approve(self.approval, user=session.user, note=note)
-        elif decision == 'reject':
-            approval_service.reject(self.approval, user=session.user, note=note)
-        else:
-            return jsonify(error='decision must be approve or reject'), 400
+        payload = request.json if request.is_json else request.form
+        decision = payload.get('decision')
+        note = payload.get('note', '')
+        try:
+            if decision == 'approve':
+                approval_service.approve(self.approval, user=session.user, note=note)
+            elif decision == 'reject':
+                approval_service.reject(self.approval, user=session.user, note=note)
+            else:
+                raise approval_service.ApprovalError('decisione non valida')
+        except Exception as exc:  # noqa: BLE001
+            db.session.rollback()
+            if request.is_json:
+                return jsonify(error=str(exc)), 400
+            flash(str(exc), 'error')
+            return redirect(url_for_plugin('agents.dashboard'))
         db.session.commit()
-        return jsonify(state=self.approval.state.name)
+        if request.is_json:
+            return jsonify(state=self.approval.state.name)
+        flash(_('Decisione registrata: {state}.').format(state=self.approval.state.name), 'success')
+        return redirect(url_for_plugin('agents.dashboard'))

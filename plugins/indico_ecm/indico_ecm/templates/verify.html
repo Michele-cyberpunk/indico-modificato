@@ -1,0 +1,21 @@
+<div style="max-width:36em;margin:3em auto;font-family:sans-serif">
+    {% if not result %}
+        <h2 style="color:#b91c1c">{% trans %}Attestato non trovato{% endtrans %}</h2>
+        <p>{% trans %}Il codice di verifica non corrisponde ad alcun attestato emesso.{% endtrans %}</p>
+    {% elif result.valid %}
+        <h2 style="color:#15803d">{% trans %}Attestato valido{% endtrans %}</h2>
+        <dl>
+            <dt><strong>Numero</strong></dt><dd>{{ result.number }}</dd>
+            <dt><strong>Crediti ECM</strong></dt><dd>{{ result.credits }}</dd>
+            <dt><strong>Evento accreditato</strong></dt><dd>{{ result.activity_code or '—' }}</dd>
+            <dt><strong>Emesso il</strong></dt><dd>{{ result.issued_dt[:10] if result.issued_dt else '—' }}</dd>
+            <dt><strong>Regole applicate</strong></dt><dd>{{ result.rule_version }}</dd>
+        </dl>
+        <p style="color:#666;font-size:.9em">
+            {% trans %}Per tutela dei dati personali questa pagina non riporta il nominativo.{% endtrans %}
+        </p>
+    {% else %}
+        <h2 style="color:#b91c1c">{% trans %}Attestato non valido{% endtrans %}</h2>
+        <p>{% trans %}Stato{% endtrans %}: {{ result.state }} — {{ result.number }}</p>
+    {% endif %}
+</div>

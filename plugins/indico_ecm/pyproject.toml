@@ -9,7 +9,7 @@ description = 'ECM accreditation, attendance, credits and certificates for Indic
 readme = 'README.md'
 license = 'MIT'
 requires-python = '>=3.12.2, <3.13'
-dependencies = ['indico>=3.3']
+dependencies = ['indico>=3.3', 'python-docx>=1.1', 'openpyxl>=3.1']
 
 [project.entry-points.'indico.plugins']
 ecm = 'indico_ecm.plugin:ECMPlugin'

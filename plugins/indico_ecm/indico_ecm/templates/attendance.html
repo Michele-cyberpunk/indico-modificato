@@ -1,0 +1,58 @@
+{% extends 'events/management/base.html' %}
+{% from 'ecm:_macros.html' import csrf, nav %}
+
+{% block title %}{% trans %}Presenze{% endtrans %}{% endblock %}
+
+{% block content %}
+    {{ nav(event, 'ecm.attendance') }}
+
+    <h3>{% trans %}Programma accreditato{% endtrans %}</h3>
+    {% if program %}
+        <table class="i-table-widget">
+            <thead><tr><th>Dalle</th><th>Alle</th><th>Minuti</th><th>Conta come formazione</th></tr></thead>
+            <tbody>
+                {% for slot in program %}
+                    <tr>
+                        <td>{{ slot.start.strftime('%d/%m %H:%M') }}</td>
+                        <td>{{ slot.end.strftime('%d/%m %H:%M') }}</td>
+                        <td>{{ slot.minutes | round | int }}</td>
+                        <td>{{ 'sì' if slot.counts_as_training else 'no (pausa)' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="i-callout">
+            {% trans %}Nessuna sessione a programma: senza timetable la presenza non è calcolabile.{% endtrans %}
+        </div>
+    {% endif %}
+
+    <h3>{% trans %}Presenze per partecipante{% endtrans %}</h3>
+    <table class="i-table-widget">
+        <thead><tr><th>Partecipante</th><th>Minuti</th><th>Intervalli</th><th>Aperti</th><th>Check-in / out</th></tr></thead>
+        <tbody>
+            {% for row in rows %}
+                <tr>
+                    <td>{{ row.registration.first_name }} {{ row.registration.last_name }}</td>
+                    <td>{{ row.minutes | round | int }}</td>
+                    <td>{{ row.intervals }}</td>
+                    <td>{% if row.open %}<span style="color:#c2410c">{{ row.open }}</span>{% else %}0{% endif %}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for_plugin('ecm.checkin', event) }}" style="display:inline">
+                            {{ csrf() }}
+                            <input type="hidden" name="registration_id" value="{{ row.registration.id }}">
+                            <select name="session_block_id">
+                                <option value="">tutto l'evento</option>
+                                {% for slot in program %}
+                                    <option value="{{ slot.session_id }}">{{ slot.start.strftime('%d/%m %H:%M') }}</option>
+                                {% endfor %}
+                            </select>
+                            <button class="i-button" name="direction" value="in" type="submit">Entrata</button>
+                            <button class="i-button" name="direction" value="out" type="submit">Uscita</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

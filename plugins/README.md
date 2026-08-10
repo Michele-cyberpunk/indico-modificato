@@ -66,5 +66,20 @@ l'applicazione completa: questi test coprono di proposito solo la logica pura
 schema e import dell'archivio legacy, template, costi, promemoria, automator,
 backoff della coda, tabella dei permessi degli agenti), 292 test in tutto.
 
-Il resto — modelli, controller, segnali — richiede un ambiente Indico completo
-con PostgreSQL.
+## Test di integrazione
+
+Con un ambiente Indico e un database di prova:
+
+```bash
+INDICO_CONFIG=/percorso/indico.conf pytest plugins/integration_test.py -v
+```
+
+31 test che coprono ciò che la logica pura non può: presenze calcolate dal
+timetable reale, pipeline crediti fino all'attestato, numerazione concorrente,
+coda con leasing fra due worker, resa di tutte le pagine, import del foglio
+ospedali e generazione delle lettere. Senza `INDICO_CONFIG` vengono saltati.
+
+## Cosa serve in più rispetto a Indico
+
+`python-docx` (lettere `.docx`) e `openpyxl` (fogli `.xlsx`). `weasyprint` e
+`qrcode`, usati per gli attestati, sono già dipendenze di Indico.

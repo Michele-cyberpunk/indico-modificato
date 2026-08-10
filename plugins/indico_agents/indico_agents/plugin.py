@@ -27,6 +27,9 @@ class AgentsSettingsForm(IndicoForm):
                                             description=_('Tetto di spesa complessivo degli agenti su un evento.'))
     model_name = StringField(_('Modello'),
                              description=_('Usato solo dagli agenti che redigono testo.'))
+    research_provider = StringField(_('Fornitore di ricerca esterna'),
+                                    description=_('Vuoto significa nessuna ricerca esterna: gli strumenti '
+                                                  'di arricchimento rispondono "non configurato".'))
 
 
 class AgentsPlugin(IndicoPlugin):
@@ -43,6 +46,7 @@ class AgentsPlugin(IndicoPlugin):
         'batch_size': 10,
         'max_cost_cents_per_event': 0,
         'model_name': '',
+        'research_provider': '',
     }
 
     def init(self):
@@ -51,7 +55,7 @@ class AgentsPlugin(IndicoPlugin):
         from indico_agents.agents import credit_agent, event_agent, registration_agent  # noqa: F401
         from indico_agents.governance import appliers  # noqa: F401
         from indico_agents.runtime import dispatch  # noqa: F401
-        from indico_agents.tools import ecm, operations  # noqa: F401
+        from indico_agents.tools import comms, crm, ecm, operations  # noqa: F401
         self.connect(signals.menu.items, self._extend_admin_menu, sender='admin-sidemenu')
 
     def get_blueprints(self):

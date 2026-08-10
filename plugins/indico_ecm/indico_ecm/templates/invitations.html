@@ -1,0 +1,63 @@
+{% extends 'events/management/base.html' %}
+{% from 'ecm:_macros.html' import csrf, nav %}
+
+{% block title %}{% trans %}Inviti{% endtrans %}{% endblock %}
+
+{% block content %}
+    {{ nav(event, 'ecm.invitations') }}
+
+    <form method="POST" enctype="multipart/form-data" style="margin-bottom:1.5em">
+        {{ csrf() }}
+        <input type="file" name="spreadsheet" accept=".csv,.xlsx,.xlsm" required>
+        <label><input type="checkbox" name="replace" value="1"> sostituisci le righe esistenti</label>
+        <button class="i-button" type="submit">{% trans %}Importa foglio ospedali{% endtrans %}</button>
+    </form>
+
+    {% if missing %}
+        <div class="i-callout">
+            {% trans %}Segnaposto del template senza valore{% endtrans %}: {{ missing | join(', ') }}
+        </div>
+    {% endif %}
+
+    {% if rows %}
+        <p>
+            <a class="i-button highlight" href="{{ url_for_plugin('ecm.letters', event) }}">
+                {% trans %}Genera le lettere (.zip){% endtrans %}</a>
+        </p>
+
+        <h3>{% trans %}Costi di ospitalità{% endtrans %}</h3>
+        <ul>
+            <li>Inviti: {{ totals.invitations }} — medici: {{ totals.physicians }}</li>
+            <li>Camere: {{ totals.room }} € · City tax: {{ totals.city_tax }} €</li>
+            <li>Ristorazione: {{ totals.catering }} € · Viaggi: {{ totals.travel }} €</li>
+            <li><strong>Totale: {{ totals.total }} €</strong>
+                {% if budget %}
+                    — budget {{ budget }} €
+                    {% if totals.total | float > budget | float %}
+                        <span style="color:#b91c1c">superato</span>
+                    {% endif %}
+                {% endif %}
+            </li>
+        </ul>
+
+        <table class="i-table-widget">
+            <thead><tr><th>Ospedale</th><th>Medici</th><th>Reparto</th><th>Ruolo</th><th>Destinatario</th>
+                       <th>Totale</th><th>Lettera</th></tr></thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr>
+                        <td>{{ row.hospital }}</td>
+                        <td>{{ row.physician_count }}</td>
+                        <td>{{ row.department }}</td>
+                        <td>{{ row.role }}</td>
+                        <td>{{ row.recipient }}<br><small>{{ row.recipient_email }}</small></td>
+                        <td>{{ row.costs.get('total', '0.00') }} €</td>
+                        <td>{{ row.letter_generated_dt.strftime('%d/%m/%Y') if row.letter_generated_dt else '—' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="i-callout">{% trans %}Nessuna riga di stampa unione per questo evento.{% endtrans %}</div>
+    {% endif %}
+{% endblock %}

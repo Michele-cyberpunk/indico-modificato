@@ -1,0 +1,43 @@
+{% extends 'events/management/base.html' %}
+{% from 'ecm:_macros.html' import csrf, nav %}
+
+{% block title %}{% trans %}Attestati{% endtrans %}{% endblock %}
+
+{% block content %}
+    {{ nav(event, 'ecm.certificates') }}
+
+    <p>{% trans %}Assegnazioni approvate in attesa di attestato{% endtrans %}: <strong>{{ approved }}</strong></p>
+
+    <form method="POST" style="margin-bottom:1.5em">
+        {{ csrf() }}
+        <button class="i-button highlight" type="submit" {{ 'disabled' if not approved }}>
+            {% trans %}Emetti gli attestati mancanti{% endtrans %}
+        </button>
+        <span style="margin-left:1em;color:#666">
+            {% trans %}Vengono emessi solo per assegnazioni già approvate da una persona.{% endtrans %}
+        </span>
+    </form>
+
+    <table class="i-table-widget">
+        <thead><tr><th>Numero</th><th>Stato</th><th>Crediti</th><th>Emesso il</th><th>Impronta</th><th></th></tr></thead>
+        <tbody>
+            {% for certificate in certificates %}
+                <tr>
+                    <td>{{ certificate.number }}</td>
+                    <td>{{ certificate.state.title }}</td>
+                    <td>{{ certificate.assignment.credits }}</td>
+                    <td>{{ certificate.issued_dt.strftime('%d/%m/%Y') if certificate.issued_dt else '—' }}</td>
+                    <td><small>{{ certificate.content_hash[:16] }}</small></td>
+                    <td>
+                        <a class="i-button"
+                           href="{{ url_for_plugin('ecm.certificate_download', event, certificate_id=certificate.id) }}">PDF</a>
+                        <a class="i-button"
+                           href="{{ url_for_plugin('ecm.verify_certificate', token=certificate.verification_token) }}">verifica</a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6">{% trans %}Nessun attestato emesso.{% endtrans %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

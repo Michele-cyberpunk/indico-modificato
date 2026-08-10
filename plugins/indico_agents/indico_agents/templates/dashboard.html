@@ -9,6 +9,13 @@
         {% else %}
             {% trans %}Gli agenti sono fermi: la coda si riempie ma nessun run parte.{% endtrans %}
         {% endif %}
+        <form method="POST" action="{{ url_for_plugin('agents.toggle') }}" style="display:inline;margin-left:1em">
+            <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+            <input type="hidden" name="enabled" value="{{ 'false' if enabled else 'true' }}">
+            <button class="i-button" type="submit">
+                {{ 'Ferma gli agenti' if enabled else 'Attiva gli agenti' }}
+            </button>
+        </form>
     </div>
 
     <h3>{% trans %}Coda{% endtrans %}</h3>
@@ -26,6 +33,7 @@
                 <th>{% trans %}Soggetto{% endtrans %}</th>
                 <th>{% trans %}Motivazione{% endtrans %}</th>
                 <th>{% trans %}Richiesta{% endtrans %}</th>
+                <th>{% trans %}Decisione{% endtrans %}</th>
             </tr>
         </thead>
         <tbody>
@@ -33,11 +41,25 @@
                 <tr>
                     <td>{{ approval.action }}</td>
                     <td>{{ approval.subject_type }} {{ approval.subject_id }}</td>
-                    <td>{{ approval.rationale }}</td>
+                    <td>{{ approval.rationale }}
+                        <details><summary>modifica proposta</summary>
+                            <pre style="white-space:pre-wrap">{{ approval.proposed_change }}</pre>
+                        </details>
+                    </td>
                     <td>{{ approval.created_dt | format_datetime }}</td>
+                    <td>
+                        <form method="POST"
+                              action="{{ url_for_plugin('agents.approval_decision', approval_id=approval.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                            <button class="i-button highlight" name="decision" value="approve" type="submit">
+                                Approva</button>
+                            <button class="i-button" name="decision" value="reject" type="submit">
+                                Rifiuta</button>
+                        </form>
+                    </td>
                 </tr>
             {% else %}
-                <tr><td colspan="4">{% trans %}Nessuna approvazione in attesa.{% endtrans %}</td></tr>
+                <tr><td colspan="5">{% trans %}Nessuna approvazione in attesa.{% endtrans %}</td></tr>
             {% endfor %}
         </tbody>
     </table>

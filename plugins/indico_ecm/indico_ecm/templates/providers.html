@@ -1,0 +1,33 @@
+{% extends 'layout/admin_page.html' %}
+{% from 'ecm:_macros.html' import csrf %}
+
+{% block title %}{% trans %}Provider ECM{% endtrans %}{% endblock %}
+
+{% block content %}
+    <table class="i-table-widget">
+        <thead><tr><th>Nome</th><th>Codice</th><th>Regione</th><th>Prefisso attestati</th><th>Attivo</th></tr></thead>
+        <tbody>
+            {% for provider in providers %}
+                <tr>
+                    <td>{{ provider.name }}</td><td>{{ provider.provider_code }}</td>
+                    <td>{{ provider.region }}</td>
+                    <td>{{ provider.settings.get('certificate_prefix', 'ECM') }}</td>
+                    <td>{{ 'sì' if provider.is_active else 'no' }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5">{% trans %}Nessun provider configurato.{% endtrans %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>{% trans %}Nuovo provider{% endtrans %}</h3>
+    <form method="POST">
+        {{ csrf() }}
+        <input name="name" placeholder="Nome" required>
+        <input name="provider_code" placeholder="Codice provider">
+        <input name="region" placeholder="Regione">
+        <input name="contact_email" type="email" placeholder="Email">
+        <input name="certificate_prefix" placeholder="Prefisso attestati" value="ECM">
+        <button class="i-button highlight" type="submit">{% trans %}Crea{% endtrans %}</button>
+    </form>
+{% endblock %}

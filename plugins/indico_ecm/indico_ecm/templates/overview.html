@@ -1,0 +1,71 @@
+{% extends 'events/management/base.html' %}
+{% from 'ecm:_macros.html' import csrf, nav, urgency_label %}
+
+{% block title %}{% trans %}ECM{% endtrans %}{% endblock %}
+
+{% block content %}
+    {{ nav(event, 'ecm.event_overview') }}
+
+    {% if not accreditation %}
+        <div class="i-callout">
+            {% trans %}Questo evento non ha ancora un dossier di accreditamento.{% endtrans %}
+            <a href="{{ url_for_plugin('ecm.accreditation', event) }}">{% trans %}Crealo{% endtrans %}</a>
+        </div>
+    {% else %}
+        <dl style="display:grid;grid-template-columns:auto 1fr;gap:.3em 1.5em;max-width:40em">
+            <dt><strong>Codice attività</strong></dt><dd>{{ accreditation.activity_code or '—' }}</dd>
+            <dt><strong>Stato</strong></dt><dd>{{ accreditation.state.title }}</dd>
+            <dt><strong>Crediti</strong></dt><dd>{{ accreditation.credits }}</dd>
+            <dt><strong>Posti</strong></dt><dd>{{ accreditation.max_participants or '—' }} — iscritti: {{ registrations }}</dd>
+            <dt><strong>Versione regole</strong></dt><dd>{{ accreditation.rule_version or '—' }}</dd>
+            <dt><strong>Cartella</strong></dt><dd>{{ operations.folder_name if operations else '—' }}</dd>
+        </dl>
+
+        <h3>{% trans %}Crediti e attestati{% endtrans %}</h3>
+        <ul>
+            <li>Proposte: {{ summary.get('proposed', 0) }}</li>
+            <li>Approvate: {{ summary.get('approved', 0) }}</li>
+            <li>Non idonei: {{ summary.get('denied', 0) }}</li>
+            <li>Revocate: {{ summary.get('revoked', 0) }}</li>
+            <li>Attestati emessi: {{ summary.get('certificates', 0) }}</li>
+        </ul>
+    {% endif %}
+
+    <h3>{% trans %}Checklist di preparazione{% endtrans %} — {{ (readiness * 100) | round | int }}%</h3>
+    <table class="i-table-widget">
+        <thead><tr><th>Voce</th><th>Stato</th><th>Scadenza</th><th>Urgenza</th><th></th></tr></thead>
+        <tbody>
+            {% for status in statuses %}
+                <tr>
+                    <td>{{ status.deliverable.value.replace('_', ' ') }}</td>
+                    <td>{{ status.state.value }}</td>
+                    <td>{{ status.deadline or '—' }}</td>
+                    <td>{{ urgency_label(status.urgency.value) }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for_plugin('ecm.deliverable_toggle', event) }}">
+                            {{ csrf() }}
+                            <input type="hidden" name="deliverable" value="{{ status.deliverable.value }}">
+                            <input type="hidden" name="state"
+                                   value="{{ 'todo' if status.state.value == 'done' else 'done' }}">
+                            <button class="i-button" type="submit">
+                                {{ 'Riapri' if status.state.value == 'done' else 'Fatto' }}
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if reminders %}
+        <h3>{% trans %}Promemoria aperti{% endtrans %}</h3>
+        <ul>
+            {% for reminder in reminders %}
+                <li>
+                    <strong>{{ reminder.task }}</strong> — {{ reminder.remind_on }}
+                    {% if reminder.remind_on < today %}<em>(in ritardo)</em>{% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endblock %}

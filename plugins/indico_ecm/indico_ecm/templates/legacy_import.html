@@ -1,0 +1,52 @@
+{% extends 'layout/admin_page.html' %}
+{% from 'ecm:_macros.html' import csrf %}
+
+{% block title %}{% trans %}Import archivio{% endtrans %}{% endblock %}
+
+{% block content %}
+    <p>{% trans %}Carica l'esportazione JSON del gestionale precedente (eventi, stampa unione, promemoria).{% endtrans %}</p>
+    <form method="POST" enctype="multipart/form-data">
+        {{ csrf() }}
+        <input type="file" name="archive" accept=".json" required>
+        <button class="i-button highlight" type="submit">{% trans %}Analizza{% endtrans %}</button>
+    </form>
+
+    {% if result %}
+        <h3>{% trans %}Risultato dell'analisi{% endtrans %}</h3>
+        <ul>
+            <li>Eventi letti: {{ result.events | length }}</li>
+            <li>Righe di stampa unione: {{ result.invitations | length }}</li>
+            <li>Promemoria: {{ result.reminders | length }}</li>
+            <li>Segnalazioni: {{ result.issues | length }}</li>
+        </ul>
+
+        {% if result.issues %}
+            <table class="i-table-widget">
+                <thead><tr><th>Riga</th><th>Campo</th><th>Problema</th><th>Valore</th></tr></thead>
+                <tbody>
+                    {% for issue in result.issues[:100] %}
+                        <tr><td>{{ issue.row }}</td><td>{{ issue.field }}</td>
+                            <td>{{ issue.message }}</td><td>{{ issue.value }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+
+        <h3>{% trans %}Eventi{% endtrans %}</h3>
+        <table class="i-table-widget">
+            <thead><tr><th>Codice</th><th>Titolo</th><th>Data</th><th>Sponsor</th><th>Crediti</th><th>Cartella</th></tr></thead>
+            <tbody>
+                {% for item in result.events[:200] %}
+                    <tr>
+                        <td>{{ item.event_code }}</td><td>{{ item.title }}</td>
+                        <td>{{ item.start_date or '—' }}</td><td>{{ item.sponsor }}</td>
+                        <td>{{ item.credits or '—' }}</td><td><small>{{ item.folder_name }}</small></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p style="color:#666">
+            {% trans %}L'analisi non scrive nulla: serve a verificare l'archivio prima di importarlo.{% endtrans %}
+        </p>
+    {% endif %}
+{% endblock %}

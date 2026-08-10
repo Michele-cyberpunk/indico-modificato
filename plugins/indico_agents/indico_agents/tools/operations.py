@@ -148,3 +148,71 @@ def prepare_invitation_letters(context, event_id):
         letters.append({'row_id': row.id, 'filename': invitation_filename(invitation),
                         'context': letter_context(invitation)})
     return {'count': len(letters), 'letters': letters}
+
+
+@tool('create_checklist', description='Crea le voci di checklist mancanti su un evento.')
+def create_checklist(context, event_id):
+    from indico.core.db import db
+    from indico.modules.events import Event
+
+    from indico_ecm.models.deliverables import EventDeliverable
+    from indico_ecm.services.deliverables import Deliverable, DeliverableState
+
+    event = Event.get(event_id)
+    if event is None:
+        return {'found': False}
+    existing = {row.deliverable for row in event.ecm_deliverables}
+    created = 0
+    for deliverable in Deliverable:
+        if deliverable.value in existing:
+            continue
+        db.session.add(EventDeliverable(event_id=event.id, deliverable=deliverable.value,
+                                        state=DeliverableState.todo.value))
+        created += 1
+    db.session.flush()
+    return {'found': True, 'created': created}
+
+
+@tool('create_reminder', description='Apre un promemoria interno su un evento.')
+def create_reminder(context, event_id, task, remind_on=None, source_deliverable=''):
+    from datetime import date as _date
+
+    from indico.core.db import db
+
+    from indico_ecm.models.operations import SpecialReminder
+
+    when = _date.fromisoformat(remind_on) if remind_on else _date.today()
+    existing = (SpecialReminder.query
+                .filter_by(event_id=event_id, task=task, dismissed_dt=None)
+                .first())
+    if existing is not None:
+        return {'reminder_id': existing.id, 'created': False}
+    reminder = SpecialReminder(event_id=event_id, task=task, remind_on=when,
+                               source_deliverable=source_deliverable)
+    db.session.add(reminder)
+    db.session.flush()
+    return {'reminder_id': reminder.id, 'created': True}
+
+
+@tool('prepare_certificate_batch',
+      description="Propone l'emissione degli attestati per le assegnazioni già approvate.")
+def prepare_certificate_batch(context, event_id):
+    from indico_agents.governance.approvals import request_approval
+    from indico_ecm.models.credits import AssignmentState, CreditAssignment
+
+    approved = (CreditAssignment.query
+                .filter_by(event_id=event_id, state=AssignmentState.approved)
+                .all())
+    if not approved:
+        return {'candidates': 0,
+                'note': 'nessuna assegnazione approvata: gli attestati non si preparano da crediti proposti'}
+    approval = request_approval(
+        action='issue_certificates',
+        subject_type='event',
+        subject_id=event_id,
+        event_id=event_id,
+        run=context.run,
+        rationale=f'{len(approved)} assegnazioni approvate senza attestato.',
+        proposed_change={'assignment_ids': [assignment.id for assignment in approved]},
+    )
+    return {'candidates': len(approved), 'approval_id': approval.id, 'issued': False}

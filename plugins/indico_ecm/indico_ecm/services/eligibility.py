@@ -29,7 +29,7 @@ class NotAuthorized(Exception):
 
 def build_participation(registration, *, hcp_profile=None, assessment=None, survey_completed=None):
     """Collect everything known about a participant, as pure data."""
-    profile = hcp_profile if hcp_profile is not None else _find_hcp_profile(registration)
+    profile = hcp_profile if hcp_profile is not None else find_hcp_profile(registration)
     correct, total = assessment if assessment else _find_assessment(registration)
     return Participation(
         intervals=attendance_service.build_intervals(registration),
@@ -143,7 +143,7 @@ def eligible_registrations(event):
     return results
 
 
-def _find_hcp_profile(registration):
+def find_hcp_profile(registration):
     try:
         from indico_crm.models.contacts import Contact
         from indico_crm.models.hcp_profiles import HCPProfile
@@ -158,7 +158,7 @@ def _find_hcp_profile(registration):
 
 
 def _find_contact_id(registration):
-    profile = _find_hcp_profile(registration)
+    profile = find_hcp_profile(registration)
     return profile.contact_id if profile else None
 
 

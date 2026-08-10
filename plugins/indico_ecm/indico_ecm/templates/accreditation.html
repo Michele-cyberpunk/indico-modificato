@@ -1,0 +1,73 @@
+{% extends 'events/management/base.html' %}
+{% from 'ecm:_macros.html' import csrf, nav %}
+
+{% block title %}{% trans %}Accreditamento{% endtrans %}{% endblock %}
+
+{% block content %}
+    {{ nav(event, 'ecm.accreditation') }}
+
+    <form method="POST">
+        {{ csrf() }}
+        <table class="i-table-widget">
+            {% if not accreditation %}
+                <tr><td>Provider</td><td>
+                    <select name="provider_id" required>
+                        {% for provider in providers %}
+                            <option value="{{ provider.id }}">{{ provider.name }}</option>
+                        {% endfor %}
+                    </select>
+                </td></tr>
+            {% else %}
+                <tr><td>Provider</td><td>{{ accreditation.provider.name }}</td></tr>
+            {% endif %}
+            <tr><td>Codice attività</td>
+                <td><input name="activity_code" value="{{ accreditation.activity_code if accreditation else '' }}"></td></tr>
+            <tr><td>Crediti</td>
+                <td><input name="credits" type="number" step="0.5" min="0"
+                           value="{{ accreditation.credits if accreditation else '' }}"></td></tr>
+            <tr><td>Posti</td>
+                <td><input name="max_participants" type="number" min="1"
+                           value="{{ accreditation.max_participants if accreditation else '' }}"></td></tr>
+            <tr><td>Modalità</td><td>
+                <select name="activity_format">
+                    {% for item in formats %}
+                        <option value="{{ item.name }}"
+                            {{ 'selected' if accreditation and accreditation.activity_format == item }}>
+                            {{ item.title }}</option>
+                    {% endfor %}
+                </select></td></tr>
+            <tr><td>Stato</td><td>
+                <select name="state">
+                    {% for item in states %}
+                        <option value="{{ item.name }}"
+                            {{ 'selected' if accreditation and accreditation.state == item }}>{{ item.title }}</option>
+                    {% endfor %}
+                </select></td></tr>
+            <tr><td>Versione regole crediti</td>
+                <td><input name="rule_version" value="{{ accreditation.rule_version if accreditation else '' }}"
+                           placeholder="es. 2026.1"></td></tr>
+            <tr><td>Codice evento</td>
+                <td><input name="event_code" value="{{ operations.event_code if operations else '' }}"></td></tr>
+            <tr><td>Cartella</td>
+                <td><input name="folder_name" size="50" value="{{ operations.folder_name if operations else '' }}"></td></tr>
+            <tr><td>Referente ufficio ECM</td>
+                <td><input name="accreditation_contact" value="{{ operations.accreditation_contact if operations else '' }}"></td></tr>
+            <tr><td>Email a</td>
+                <td><input name="accreditation_to" type="email" value="{{ operations.accreditation_to if operations else '' }}"></td></tr>
+            <tr><td>CC</td>
+                <td><input name="accreditation_cc" value="{{ operations.accreditation_cc if operations else '' }}"></td></tr>
+        </table>
+        <button class="i-button highlight" type="submit">{% trans %}Salva{% endtrans %}</button>
+    </form>
+
+    {% if request_email %}
+        <h3>{% trans %}Richiesta di accreditamento{% endtrans %}</h3>
+        {% if missing %}
+            <div class="i-callout">Mancano: {{ missing | join(', ') }}</div>
+        {% endif %}
+        <p><strong>A:</strong> {{ request_email.to or '—' }}
+           {% if request_email.cc %}<strong>CC:</strong> {{ request_email.cc | join(', ') }}{% endif %}</p>
+        <p><strong>Oggetto:</strong> {{ request_email.subject }}</p>
+        <div style="border:1px solid #ddd;padding:1em;background:#fafafa">{{ request_email.body | safe }}</div>
+    {% endif %}
+{% endblock %}

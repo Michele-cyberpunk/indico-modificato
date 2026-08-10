@@ -43,6 +43,7 @@ class ECMPlugin(IndicoPlugin):
     def init(self):
         super().init()
         self.connect(signals.menu.items, self._extend_event_menu, sender='event-management-sidemenu')
+        self.connect(signals.menu.items, self._extend_admin_menu, sender='admin-sidemenu')
 
     def get_blueprints(self):
         return blueprint
@@ -52,3 +53,9 @@ class ECMPlugin(IndicoPlugin):
             return None
         return SideMenuItem('ecm', _('ECM'), url_for_plugin('ecm.event_overview', event), section='reports',
                             weight=20)
+
+    def _extend_admin_menu(self, sender, **kwargs):
+        if not session.user or not session.user.is_admin:
+            return None
+        return SideMenuItem('ecm_admin', _('ECM'), url_for_plugin('ecm.providers'), 65,
+                            section='customization')

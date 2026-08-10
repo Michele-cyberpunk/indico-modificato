@@ -1,0 +1,32 @@
+{% macro csrf() %}
+    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+{% endmacro %}
+
+{% macro urgency_label(urgency) %}
+    {%- if urgency == 'missed' %}<span style="color:#b91c1c;font-weight:bold">scaduto</span>
+    {%- elif urgency == 'late' %}<span style="color:#c2410c;font-weight:bold">in ritardo</span>
+    {%- elif urgency == 'due' %}<span style="color:#a16207">in scadenza</span>
+    {%- else %}<span style="color:#15803d">ok</span>{% endif %}
+{% endmacro %}
+
+{% macro state_label(state) %}
+    {%- if state == 'approved' %}<span style="color:#15803d;font-weight:bold">approvata</span>
+    {%- elif state == 'proposed' %}<span style="color:#1d4ed8">proposta</span>
+    {%- elif state == 'denied' %}<span style="color:#b91c1c">non idoneo</span>
+    {%- elif state == 'revoked' %}<span style="color:#6b7280">revocata</span>
+    {%- else %}{{ state }}{% endif %}
+{% endmacro %}
+
+{% macro nav(event, current) %}
+    <div style="margin-bottom:1.5em;padding-bottom:.6em;border-bottom:1px solid #ddd">
+        {% for endpoint, label in [('ecm.event_overview', 'Panoramica'), ('ecm.accreditation', 'Accreditamento'),
+                                   ('ecm.attendance', 'Presenze'), ('ecm.participants', 'Crediti'),
+                                   ('ecm.certificates', 'Attestati'), ('ecm.invitations', 'Inviti')] %}
+            {% if endpoint == current %}
+                <strong style="margin-right:1.2em">{{ label }}</strong>
+            {% else %}
+                <a href="{{ url_for_plugin(endpoint, event) }}" style="margin-right:1.2em">{{ label }}</a>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endmacro %}
