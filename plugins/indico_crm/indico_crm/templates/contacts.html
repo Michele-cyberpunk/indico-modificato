@@ -1,0 +1,37 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}{% trans %}Contatti{% endtrans %}{% endblock %}
+
+{% block content %}
+    <form method="GET" class="crm-search">
+        <input type="search" name="q" value="{{ query }}" placeholder="{% trans %}Cerca…{% endtrans %}">
+    </form>
+    <table class="i-table-widget">
+        <thead>
+            <tr>
+                <th>{% trans %}Nome{% endtrans %}</th>
+                <th>{% trans %}Email{% endtrans %}</th>
+                <th>{% trans %}Azienda{% endtrans %}</th>
+                <th>{% trans %}ECM{% endtrans %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contact in contacts %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for_plugin('crm.contact_details', contact_id=contact.id) }}">
+                            {{ contact.full_name }}
+                        </a>
+                    </td>
+                    <td>{{ contact.email }}</td>
+                    <td>{{ contact.company.name if contact.company else '' }}</td>
+                    <td>
+                        {% if contact.is_healthcare_professional %}
+                            {{ contact.hcp_profile.profession }} — {{ contact.hcp_profile.discipline }}
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

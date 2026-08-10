@@ -1,0 +1,46 @@
+{% extends 'events/management/base.html' %}
+
+{% block title %}{% trans %}ECM{% endtrans %}{% endblock %}
+
+{% block content %}
+    {% if not accreditation %}
+        <div class="i-callout">
+            {% trans %}Questo evento non ha ancora un dossier di accreditamento.{% endtrans %}
+        </div>
+    {% else %}
+        <dl>
+            <dt>{% trans %}Codice attività{% endtrans %}</dt><dd>{{ accreditation.activity_code or '—' }}</dd>
+            <dt>{% trans %}Stato{% endtrans %}</dt><dd>{{ accreditation.state.title }}</dd>
+            <dt>{% trans %}Crediti{% endtrans %}</dt><dd>{{ accreditation.credits }}</dd>
+            <dt>{% trans %}Versione regole{% endtrans %}</dt><dd>{{ accreditation.rule_version or '—' }}</dd>
+        </dl>
+        <ul class="ecm-summary">
+            <li>{% trans %}Proposte{% endtrans %}: {{ summary.proposed }}</li>
+            <li>{% trans %}Approvate{% endtrans %}: {{ summary.approved }}</li>
+            <li>{% trans %}Non idonee{% endtrans %}: {{ summary.denied }}</li>
+            <li>{% trans %}Revocate{% endtrans %}: {{ summary.revoked }}</li>
+        </ul>
+        <table class="i-table-widget">
+            <thead>
+                <tr>
+                    <th>{% trans %}Iscrizione{% endtrans %}</th>
+                    <th>{% trans %}Stato{% endtrans %}</th>
+                    <th>{% trans %}Crediti{% endtrans %}</th>
+                    <th>{% trans %}Presenza{% endtrans %}</th>
+                    <th>{% trans %}Motivi{% endtrans %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for assignment in assignments %}
+                    <tr>
+                        <td>{{ assignment.registration_id }}</td>
+                        <td>{{ assignment.state.title }}</td>
+                        <td>{{ assignment.credits }}</td>
+                        <td>{{ assignment.outcome.get('attendance_ratio', '—') }}</td>
+                        <td>{{ assignment.reasons | join(', ') }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

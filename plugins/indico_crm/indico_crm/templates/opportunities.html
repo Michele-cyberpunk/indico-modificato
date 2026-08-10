@@ -1,0 +1,30 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}{% trans %}Opportunità{% endtrans %}{% endblock %}
+
+{% block content %}
+    <table class="i-table-widget">
+        <thead>
+            <tr>
+                <th>{% trans %}Titolo{% endtrans %}</th>
+                <th>{% trans %}Azienda{% endtrans %}</th>
+                <th>{% trans %}Evento{% endtrans %}</th>
+                <th>{% trans %}Stato{% endtrans %}</th>
+                <th>{% trans %}Valore{% endtrans %}</th>
+                <th>{% trans %}Prossima azione{% endtrans %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for opportunity in opportunities %}
+                <tr>
+                    <td>{{ opportunity.title }}</td>
+                    <td>{{ opportunity.company.name }}</td>
+                    <td>{{ opportunity.event.title if opportunity.event else '' }}</td>
+                    <td>{{ opportunity.stage.title }}</td>
+                    <td>{{ opportunity.value }} {{ opportunity.currency }}</td>
+                    <td>{{ opportunity.next_action }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

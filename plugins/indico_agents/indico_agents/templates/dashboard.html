@@ -1,0 +1,88 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}{% trans %}Agenti{% endtrans %}{% endblock %}
+
+{% block content %}
+    <div class="i-callout {{ 'success' if enabled else 'warning' }}">
+        {% if enabled %}
+            {% trans %}Gli agenti sono attivi.{% endtrans %}
+        {% else %}
+            {% trans %}Gli agenti sono fermi: la coda si riempie ma nessun run parte.{% endtrans %}
+        {% endif %}
+    </div>
+
+    <h3>{% trans %}Coda{% endtrans %}</h3>
+    <ul>
+        {% for status, count in stats.items() %}
+            <li>{{ status }}: {{ count }}</li>
+        {% endfor %}
+    </ul>
+
+    <h3>{% trans %}Approvazioni in attesa{% endtrans %}</h3>
+    <table class="i-table-widget">
+        <thead>
+            <tr>
+                <th>{% trans %}Azione{% endtrans %}</th>
+                <th>{% trans %}Soggetto{% endtrans %}</th>
+                <th>{% trans %}Motivazione{% endtrans %}</th>
+                <th>{% trans %}Richiesta{% endtrans %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for approval in approvals %}
+                <tr>
+                    <td>{{ approval.action }}</td>
+                    <td>{{ approval.subject_type }} {{ approval.subject_id }}</td>
+                    <td>{{ approval.rationale }}</td>
+                    <td>{{ approval.created_dt | format_datetime }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="4">{% trans %}Nessuna approvazione in attesa.{% endtrans %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>{% trans %}Esecuzioni recenti{% endtrans %}</h3>
+    <table class="i-table-widget">
+        <thead>
+            <tr>
+                <th>{% trans %}Agente{% endtrans %}</th>
+                <th>{% trans %}Stato{% endtrans %}</th>
+                <th>{% trans %}Riepilogo{% endtrans %}</th>
+                <th>{% trans %}Inizio{% endtrans %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for run in runs %}
+                <tr>
+                    <td>{{ run.agent_name }}</td>
+                    <td>{{ run.state.title }}</td>
+                    <td>{{ run.summary }}</td>
+                    <td>{{ run.started_dt | format_datetime }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>{% trans %}Task falliti{% endtrans %}</h3>
+    <table class="i-table-widget">
+        <thead>
+            <tr>
+                <th>{% trans %}Tipo{% endtrans %}</th>
+                <th>{% trans %}Soggetto{% endtrans %}</th>
+                <th>{% trans %}Tentativi{% endtrans %}</th>
+                <th>{% trans %}Errore{% endtrans %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for task in failed_tasks %}
+                <tr>
+                    <td>{{ task.kind }}</td>
+                    <td>{{ task.subject_type }} {{ task.subject_id }}</td>
+                    <td>{{ task.attempts }}/{{ task.max_attempts }}</td>
+                    <td>{{ task.last_error }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}{% trans %}Aziende{% endtrans %}{% endblock %}
+
+{% block content %}
+    <table class="i-table-widget">
+        <thead>
+            <tr>
+                <th>{% trans %}Nome{% endtrans %}</th>
+                <th>{% trans %}Tipo{% endtrans %}</th>
+                <th>{% trans %}P. IVA{% endtrans %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for company in companies %}
+                <tr>
+                    <td>{{ company.name }}</td>
+                    <td>{{ company.kind.title }}</td>
+                    <td>{{ company.vat_id or '' }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

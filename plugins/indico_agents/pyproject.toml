@@ -1,0 +1,18 @@
+[build-system]
+requires = ['hatchling==1.27.0']
+build-backend = 'hatchling.build'
+
+[project]
+name = 'indico-plugin-agents'
+version = '0.1.0'
+description = 'Durable agent layer for the Indico ECM platform'
+readme = 'README.md'
+license = 'MIT'
+requires-python = '>=3.12.2, <3.13'
+dependencies = ['indico>=3.3']
+
+[project.entry-points.'indico.plugins']
+agents = 'indico_agents.plugin:AgentsPlugin'
+
+[tool.hatch.build]
+include = ['indico_agents']

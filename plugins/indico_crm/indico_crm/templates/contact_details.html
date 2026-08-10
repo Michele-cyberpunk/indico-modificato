@@ -1,0 +1,20 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}{{ contact.full_name }}{% endblock %}
+
+{% block content %}
+    <section>
+        <h3>{% trans %}Evidenze correnti{% endtrans %}</h3>
+        <ul>
+            {% for entry in evidence %}
+                <li>
+                    <strong>{{ entry.attribute or '—' }}</strong>: {{ entry.statement }}
+                    <em>({{ entry.kind.title }}, {{ entry.confidence }}%{% if entry.is_from_agent %},
+                        {% trans %}agente{% endtrans %}{% endif %})</em>
+                </li>
+            {% else %}
+                <li>{% trans %}Nessuna evidenza registrata.{% endtrans %}</li>
+            {% endfor %}
+        </ul>
+    </section>
+{% endblock %}
