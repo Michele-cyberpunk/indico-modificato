@@ -10,9 +10,9 @@ applicazione avviata, pagine e azioni provate una per una.
 web: creare il dossier di accreditamento, seguire la checklist di preparazione,
 registrare le presenze per sessione, far valutare i crediti dal motore
 deterministico, approvarli, emettere gli attestati in PDF con QR di verifica,
-importare il foglio ospedali, generare le lettere di invito in Word e, da
-un'email o dagli allegati dello sponsor, costruire la cartella evento con i suoi
-documenti iniziali.
+importare il foglio ospedali, generare le lettere di invito in Word, trasformare
+la lista che manda lo sponsor in navette e coperti e, da un'email o dagli allegati,
+costruire la cartella evento con i suoi documenti iniziali.
 
 **Nessun mock.** Ogni strumento autorizzato esiste, ogni azione approvabile ha
 un esecutore reale, e le funzioni che dipendono da un fornitore esterno non
@@ -27,6 +27,7 @@ configurato lo dichiarano invece di inventare dati.
 | **Presenze** | Programma accreditato con i minuti che contano, presenze per partecipante, presenze aperte, entrata/uscita per sessione dal banco |
 | **Crediti** | Per ogni iscritto: minuti di presenza, esito del questionario, verdetto delle regole con i motivi, assegnazione, attestato. Rivalutazione di massa. Approvazione e revoca una per una |
 | **Attestati** | Emissione di massa per le sole assegnazioni approvate, elenco con numero, impronta e stato, download del PDF, link alla verifica |
+| **Ospiti e transfer** | Import della lista che manda lo sponsor (foglio, CSV, testo, Word, PDF): ogni riga letta con regole, le righe scartate elencate con il motivo, coperti a pranzo e cena contando gli accompagnatori, navette raggruppate per finestra oraria e per capienza del veicolo, foglio arrivi e foglio partenze stampabili |
 | **Inviti** | Import del foglio ospedali (CSV o XLSX, intestazioni italiane), costi di ospitalità per medico e per evento con confronto sul budget, generazione di tutte le lettere `.docx` in un archivio |
 | **Verifica pubblica** (`/ecm/verify/<token>`) | Pagina aperta a chiunque: numero, crediti, evento accreditato, data, versione regole. Nessun dato personale. Anche in JSON |
 | **Provider** (`/admin/ecm/providers`) | Anagrafica provider e prefisso di numerazione |
@@ -39,17 +40,18 @@ configurato lo dichiarano invece di inventare dati.
 
 | Verifica | Esito |
 |---|---|
-| `indico db prepare` su database vuoto + `indico db --plugin … upgrade` ×4 | **28 tabelle** create |
-| Avvio di `make_app()` con i quattro plugin | 4 plugin attivi, **17 rotte ECM** più CRM e agenti |
-| Rendering di tutte le pagine con utente autenticato | **16 pagine, tutte 200** |
+| `indico db prepare` su database vuoto + `indico db --plugin … upgrade` ×4 | **29 tabelle** create |
+| Avvio di `make_app()` con i quattro plugin | 4 plugin attivi, **19 rotte ECM** più CRM e agenti |
+| Rendering di tutte le pagine con utente autenticato | **18 pagine, tutte 200** |
 | Generazione PDF attestato | 12,9 KB, `%PDF`, impronta SHA-256 |
 | Import foglio ospedali + generazione lettere | 2 righe importate, archivio `.zip` da ~60 KB con i `.docx` |
 | Check-in dal banco | presenza registrata, risposta JSON |
 | Pipeline crediti completa | 360/360 minuti dal timetable reale, 9 crediti, attestato numerato, verifica pubblica valida |
 | Coda agenti | dedup, `FOR UPDATE SKIP LOCKED` fra due worker, backoff, recupero del lease di un worker morto |
+| Lista ospiti | lista incollata e foglio `.xlsx`: nomi in maiuscolo e con particelle, accompagnatori contati, righe scartate motivate, navette spezzate per capienza, foglio stampabile |
 | Da documento a cartella | email incollata e allegato Word: codice, data, relatori (particelle comprese) e cartella `0915 CARDIO … 0116-GDBO`, zip da 5 documenti scaricato dalla pagina |
-| **Suite di integrazione** (`plugins/integration_test.py`) | **36 test** su Indico e PostgreSQL reali |
-| Suite pure (senza database) | **323 test** |
+| **Suite di integrazione** (`plugins/integration_test.py`) | **43 test** su Indico e PostgreSQL reali |
+| Suite pure (senza database) | **376 test** |
 | ruff con la configurazione del repository | pulito |
 
 ## Copertura degli strumenti degli agenti
@@ -88,6 +90,14 @@ configurato nelle impostazioni del plugin: nessun dato inventato.
    ("codice evento:", "rif."), le particelle dei cognomi fanno parte del nome e
    le parole di ruolo che seguono vengono tolte. Ogni caso sbagliato è diventato
    un test.
+8. **Le espressioni regolari della lista ospiti**, che l'originale usava come
+   ripiego quando l'AI non era disponibile e che qui sono l'unico percorso: otto
+   difetti riprodotti su righe realistiche prima di correggerli — nome in
+   maiuscolo, nome accentato, particella del cognome, "no pranzo" contato come
+   pranzo, dieta di una parola sola buttata via, accompagnatore non contato,
+   riga di logistica letta come persona, e la `h` non ancorata che leggeva
+   `Bosch: 10:30` come un arrivo. Dove la riga non dice quale sia il cognome, la
+   piattaforma lo dichiara invece di indovinare e offre di invertirlo.
 
 ## Cosa resta fuori, per scelta
 

@@ -1,0 +1,151 @@
+{% extends 'events/management/base.html' %}
+{% from 'ecm:_macros.html' import csrf, nav %}
+
+{% block title %}{% trans %}Ospiti e transfer{% endtrans %}{% endblock %}
+
+{% block content %}
+    {{ nav(event, 'ecm.guests') }}
+
+    <p>
+        {% trans %}Carica la lista che manda lo sponsor — foglio, CSV, testo, Word o PDF — oppure
+        incollala. Ogni riga viene letta con regole deterministiche: nessun modello, nessuna chiave
+        API. Le righe che non producono una persona vengono elencate con il motivo, non
+        scartate in silenzio.{% endtrans %}
+    </p>
+
+    <form method="POST" enctype="multipart/form-data" style="margin-bottom:2em">
+        {{ csrf() }}
+        <p><input type="file" name="list" accept=".csv,.txt,.xlsx,.xlsm,.docx,.pdf"></p>
+        <p><textarea name="text" rows="6" cols="100"
+                     placeholder="…oppure incolla qui la lista, una persona per riga"></textarea></p>
+        <p>
+            <label><input type="checkbox" name="replace" value="1"> {% trans %}Sostituisci la lista esistente{% endtrans %}</label>
+        </p>
+        <button class="i-button highlight" type="submit">{% trans %}Importa{% endtrans %}</button>
+    </form>
+
+    {% if rejected %}
+        <div class="i-callout">
+            <strong>{% trans %}Righe scartate{% endtrans %} ({{ rejected | length }})</strong>
+            <table class="i-table-widget">
+                <thead><tr><th>Riga</th><th>Contenuto</th><th>Motivo</th></tr></thead>
+                <tbody>
+                    {% for row in rejected %}
+                        <tr><td>{{ row.row_number }}</td><td><code>{{ row.content }}</code></td>
+                            <td>{{ row.reason }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <h3>{% trans %}Da organizzare{% endtrans %}</h3>
+    <table class="i-table-widget">
+        <tbody>
+            <tr><td>{% trans %}Transfer in arrivo{% endtrans %}</td><td>{{ categories.arrivals | length }}</td></tr>
+            <tr><td>{% trans %}Transfer in partenza{% endtrans %}</td><td>{{ categories.departures | length }}</td></tr>
+            <tr><td>{% trans %}Con mezzi propri{% endtrans %}</td><td>{{ categories.own_transport | length }}</td></tr>
+            <tr><td>{% trans %}Senza orari{% endtrans %}</td><td>{{ categories.no_transfer | length }}</td></tr>
+            <tr><td>{% trans %}Coperti a pranzo{% endtrans %}</td>
+                <td><strong>{{ categories.covers['lunch'] }}</strong>
+                    <small>({{ categories.lunch | length }} richieste, accompagnatori compresi)</small></td></tr>
+            <tr><td>{% trans %}Coperti a cena{% endtrans %}</td>
+                <td><strong>{{ categories.covers['dinner'] }}</strong>
+                    <small>({{ categories.dinner | length }} richieste)</small></td></tr>
+        </tbody>
+    </table>
+
+    {% if oversized %}
+        <div class="i-callout">
+            {% trans %}Gruppi più grandi di un veicolo: vanno sistemati a mano{% endtrans %} —
+            {% for guest in oversized %}<strong>{{ guest.full_name }}</strong> ({{ guest.pax }} pax){% if not loop.last %}, {% endif %}{% endfor %}
+        </div>
+    {% endif %}
+
+    <h3>{% trans %}Navette{% endtrans %}
+        <small style="font-weight:normal">
+            <a href="{{ url_for_plugin('ecm.transfer_sheet', event) }}" target="_blank">foglio arrivi</a> ·
+            <a href="{{ url_for_plugin('ecm.transfer_sheet', event, direction='departure') }}" target="_blank">foglio partenze</a>
+        </small>
+    </h3>
+
+    <form method="POST" style="margin-bottom:1em">
+        {{ csrf() }}
+        <input type="hidden" name="action" value="settings">
+        {% trans %}Strategia{% endtrans %}
+        <select name="strategy">
+            <option value="vehicle" {{ 'selected' if config.strategy == 'vehicle' }}>per veicolo</option>
+            <option value="time" {{ 'selected' if config.strategy != 'vehicle' }}>solo per orario</option>
+        </select>
+        {% trans %}finestra{% endtrans %} <input type="number" name="window" value="{{ config.window }}" min="5" max="240" size="4"> min
+        {% trans %}posti{% endtrans %} <input type="number" name="seats" value="{{ config.seats_per_vehicle }}" min="1" max="60" size="3">
+        <button class="i-button" type="submit">{% trans %}Aggiorna{% endtrans %}</button>
+    </form>
+
+    {% for label, groups in [('Arrivi', arrivals), ('Partenze', departures)] %}
+        <h4>{{ label }}</h4>
+        {% for group in groups %}
+            <p style="margin-bottom:.2em">
+                <strong>{{ group.window }}</strong>
+                {% if config.strategy == 'vehicle' %}<em>veicolo {{ group.vehicle_number }}</em>{% endif %}
+                — {{ group.guests | length }} ospiti, {{ group.pax }} pax
+            </p>
+            <table class="i-table-widget" style="margin-bottom:1em">
+                <tbody>
+                    {% for guest in group.guests %}
+                        <tr><td>{{ guest.full_name }}</td><td>{{ guest.phone }}</td>
+                            <td>{{ guest.pax }} pax</td><td>{{ guest.diet_notes }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p><em>{% trans %}nessuno{% endtrans %}</em></p>
+        {% endfor %}
+    {% endfor %}
+
+    <h3>{% trans %}Lista{% endtrans %} ({{ rows | length }})</h3>
+    <table class="i-table-widget">
+        <thead>
+            <tr><th>Nome</th><th>Contatto</th><th>Pax</th><th>Arrivo</th><th>Partenza</th>
+                <th>Pranzo</th><th>Cena</th><th>Dieta</th><th>Letto da</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                <tr>
+                    <td>
+                        {{ row.full_name or '—' }}
+                        {% if not row.name_order_certain %}
+                            <form method="POST" style="display:inline">
+                                {{ csrf() }}
+                                <input type="hidden" name="action" value="swap">
+                                <input type="hidden" name="guest_id" value="{{ row.id }}">
+                                <button class="i-button text-color" type="submit"
+                                        title="{% trans %}Nulla nella riga diceva quale fosse il cognome{% endtrans %}">
+                                    ⇄ {% trans %}inverti{% endtrans %}
+                                </button>
+                            </form>
+                        {% endif %}
+                    </td>
+                    <td><small>{{ row.email }}{% if row.email and row.phone %}<br>{% endif %}{{ row.phone }}</small></td>
+                    <td>{{ row.pax }}</td>
+                    <td>{{ row.arrival.strftime('%H:%M') if row.arrival else '—' }}</td>
+                    <td>{{ row.departure.strftime('%H:%M') if row.departure else '—' }}</td>
+                    <td>{{ 'sì' if row.lunch else '—' }}</td>
+                    <td>{{ 'sì' if row.dinner else '—' }}</td>
+                    <td>{{ row.diet_notes or '—' }}</td>
+                    <td><small><code>{{ row.source_row }}</code></small></td>
+                    <td>
+                        <form method="POST" style="display:inline">
+                            {{ csrf() }}
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="guest_id" value="{{ row.id }}">
+                            <button class="i-button text-color" type="submit">{% trans %}Rimuovi{% endtrans %}</button>
+                        </form>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="10">{% trans %}Nessun ospite importato.{% endtrans %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

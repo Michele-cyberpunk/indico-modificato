@@ -140,6 +140,23 @@ class EventOperations(db.Model):
         db.Numeric(precision=12, scale=2),
         nullable=True
     )
+    #: How the shuttles are organised: 'vehicle' fills them, 'time' only groups
+    transfer_strategy = db.Column(
+        db.String,
+        nullable=False,
+        default='vehicle'
+    )
+    #: Width of a shuttle time window, in minutes
+    transfer_window = db.Column(
+        db.Integer,
+        nullable=False,
+        default=60
+    )
+    seats_per_vehicle = db.Column(
+        db.Integer,
+        nullable=False,
+        default=8
+    )
     #: Values of the legacy record that have no home yet, kept rather than lost
     legacy_data = db.Column(
         db.JSON,

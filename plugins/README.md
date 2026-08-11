@@ -6,7 +6,7 @@ un provider ECM. Progettazione e razionale in [`docs/ecm-crm/`](../docs/ecm-crm/
 | Plugin | Schema DB | Contenuto |
 |---|---|---|
 | `indico_crm` | `plugin_crm` | Aziende, contatti, professionisti sanitari, opportunità, attività, consensi, evidenze, ponte verso gli oggetti Indico |
-| `indico_ecm` | `plugin_ecm` | Provider, accreditamento, presenza per sessione, regole crediti, assegnazioni, attestati |
+| `indico_ecm` | `plugin_ecm` | Provider, accreditamento, presenza per sessione, regole crediti, assegnazioni, attestati, lista ospiti e transfer |
 | `indico_agents` | `plugin_agents` | Coda di lavoro con leasing, run durabili, tool, skill, approvazioni, audit |
 | `indico_integrations` | `plugin_integrations` | Outbox transazionale e adapter verso sistemi esterni |
 
@@ -64,8 +64,9 @@ cd plugins/indico_agents && PYTHONPATH=. python -m pytest indico_agents -q -c /d
 l'applicazione completa: questi test coprono di proposito solo la logica pura
 (corrispondenza di identità, regole crediti, serializzazione delle regole,
 schema e import dell'archivio legacy, template, costi, promemoria, automator con
-le sue espressioni regolari e la costruzione della cartella evento, backoff della
-coda, tabella dei permessi degli agenti), 323 test in tutto.
+le sue espressioni regolari e la costruzione della cartella evento, lettura della
+lista ospiti con transfer e coperti, backoff della coda, tabella dei permessi
+degli agenti), 376 test in tutto.
 
 ## Test di integrazione
 
@@ -75,11 +76,11 @@ Con un ambiente Indico e un database di prova:
 INDICO_CONFIG=/percorso/indico.conf pytest plugins/integration_test.py -v
 ```
 
-36 test che coprono ciò che la logica pura non può: presenze calcolate dal
+43 test che coprono ciò che la logica pura non può: presenze calcolate dal
 timetable reale, pipeline crediti fino all'attestato, numerazione concorrente,
 coda con leasing fra due worker, resa di tutte le pagine, import del foglio
-ospedali e generazione delle lettere, e la pagina che da un documento costruisce
-la cartella evento. Senza `INDICO_CONFIG` vengono saltati.
+ospedali e generazione delle lettere, la pagina che da un documento costruisce la
+cartella evento e quella che da una lista ricava navette e coperti. Senza `INDICO_CONFIG` vengono saltati.
 
 ## Cosa serve in più rispetto a Indico
 

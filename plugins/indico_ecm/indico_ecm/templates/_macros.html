@@ -34,7 +34,8 @@
     <div style="margin-bottom:1.5em;padding-bottom:.6em;border-bottom:1px solid #ddd">
         {% for endpoint, label in [('ecm.event_overview', 'Panoramica'), ('ecm.accreditation', 'Accreditamento'),
                                    ('ecm.attendance', 'Presenze'), ('ecm.participants', 'Crediti'),
-                                   ('ecm.certificates', 'Attestati'), ('ecm.invitations', 'Inviti')] %}
+                                   ('ecm.certificates', 'Attestati'), ('ecm.invitations', 'Inviti'),
+                                   ('ecm.guests', 'Ospiti e transfer')] %}
             {% if endpoint == current %}
                 <strong style="margin-right:1.2em">{{ label }}</strong>
             {% else %}

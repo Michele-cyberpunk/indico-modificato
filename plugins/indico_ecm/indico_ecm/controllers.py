@@ -38,12 +38,14 @@ from indico.web.views import WPDecorated
 from indico_ecm.models.certificates import Certificate, CertificateState
 from indico_ecm.models.credits import AssignmentState, CreditAssignment
 from indico_ecm.models.deliverables import EventDeliverable, states_for_event
+from indico_ecm.models.guests import EventGuest
 from indico_ecm.models.operations import EventOperations, InvitationBatch, SpecialReminder
 from indico_ecm.models.provider import AccreditationState, ActivityFormat, EventAccreditation, Provider
 from indico_ecm.services import attendance as attendance_service
 from indico_ecm.services import automator as automator_service
 from indico_ecm.services import certificate_render, certificates as certificate_service
 from indico_ecm.services import eligibility as eligibility_service
+from indico_ecm.services import guests as guest_service
 from indico_ecm.services import invitations as invitation_service
 from indico_ecm.services.accreditation_mail import AccreditationRequest, build_email, missing_fields
 from indico_ecm.services.costs import event_totals, money
@@ -62,6 +64,13 @@ class WPECMAdmin(WPJinjaMixinPlugin, WPAdmin):
 
 class WPCertificateVerify(WPJinjaMixinPlugin, WPDecorated):
     """The public verification page: no menu, no login."""
+
+    def _get_body(self, params):
+        return self._get_page_content(params)
+
+
+class WPECMSheet(WPJinjaMixinPlugin, WPDecorated):
+    """A sheet meant to be printed and handed to a driver: no menu, no chrome."""
 
     def _get_body(self, params):
         return self._get_page_content(params)
@@ -411,6 +420,100 @@ class RHECMLetters(RHECMEventBase):
             return redirect(url_for_plugin('ecm.invitations', self.event))
         name = f'lettere-invito-{self.event.id}.zip'
         return send_file(name, io.BytesIO(archive), 'application/zip', inline=False)
+
+
+class RHECMGuests(RHECMEventBase):
+    """The sponsor's participant list, turned into transfers and covers.
+
+    Upload the list, see what the rules read and what they rejected and why,
+    then the shuttle runs and the meal counts. No model is involved: a
+    participant list is short, formulaic text and rules read it predictably.
+    """
+
+    def _config(self):
+        return guest_service.TransferConfig(
+            strategy=(self.operations.transfer_strategy if self.operations else None) or 'vehicle',
+            window=(self.operations.transfer_window if self.operations else None) or 60,
+            seats_per_vehicle=(self.operations.seats_per_vehicle if self.operations else None) or 8)
+
+    def _render(self, rejected=()):
+        rows = self.event.ecm_guests.order_by(EventGuest.last_name, EventGuest.first_name).all()
+        guests = [row.to_guest() for row in rows]
+        config = self._config()
+        return WPECM.render_template(
+            'guests.html', self.event, 'ecm', rows=rows, rejected=rejected,
+            categories=guest_service.categorize(guests), config=config,
+            arrivals=guest_service.group_transfers(guests, config, arrival=True),
+            departures=guest_service.group_transfers(guests, config, arrival=False),
+            oversized=guest_service.oversized_parties(guests, config))
+
+    def _process_GET(self):
+        return self._render()
+
+    def _process_POST(self):
+        action = request.form.get('action', 'import')
+        if action == 'swap':
+            row = EventGuest.query.filter_by(id=request.form.get('guest_id', type=int),
+                                             event_id=self.event.id).first_or_404()
+            row.first_name, row.last_name = row.last_name, row.first_name
+            row.name_order_certain = True
+            db.session.commit()
+            return redirect(url_for_plugin('ecm.guests', self.event))
+        if action == 'delete':
+            EventGuest.query.filter_by(id=request.form.get('guest_id', type=int),
+                                       event_id=self.event.id).delete()
+            db.session.commit()
+            return redirect(url_for_plugin('ecm.guests', self.event))
+        if action == 'settings':
+            operations = self._ensure_operations()
+            operations.transfer_strategy = request.form.get('strategy', 'vehicle')
+            operations.transfer_window = request.form.get('window', type=int) or 60
+            operations.seats_per_vehicle = request.form.get('seats', type=int) or 8
+            db.session.commit()
+            flash(_('Impostazioni dei transfer aggiornate.'), 'success')
+            return redirect(url_for_plugin('ecm.guests', self.event))
+
+        upload = request.files.get('list')
+        text = request.form.get('text', '').strip()
+        if upload is not None and upload.filename:
+            try:
+                lines = guest_service.read_list(upload.read(), upload.filename)
+            except Exception as exc:
+                flash(f'{upload.filename}: {exc}', 'error')
+                return redirect(url_for_plugin('ecm.guests', self.event))
+        elif text:
+            lines = text.splitlines()
+        else:
+            flash(_('Incolla la lista o carica un file.'), 'error')
+            return redirect(url_for_plugin('ecm.guests', self.event))
+
+        if request.form.get('replace'):
+            EventGuest.query.filter_by(event_id=self.event.id).delete()
+        guests, rejected = guest_service.import_guest_list(lines)
+        for guest in guests:
+            source = lines[guest.row_number - 1] if 0 < guest.row_number <= len(lines) else ''
+            db.session.add(EventGuest.from_extraction(self.event.id, guest, source_row=source))
+        db.session.commit()
+        flash(_('{count} ospiti importati, {rejected} righe scartate.').format(
+            count=len(guests), rejected=len(rejected)), 'success')
+        return self._render(rejected=rejected)
+
+
+class RHECMTransferSheet(RHECMEventBase):
+    """The shuttle sheet the driver is handed, as a printable page."""
+
+    def _process(self):
+        rows = self.event.ecm_guests.order_by(EventGuest.last_name, EventGuest.first_name).all()
+        guests = [row.to_guest() for row in rows]
+        config = guest_service.TransferConfig(
+            strategy=(self.operations.transfer_strategy if self.operations else None) or 'vehicle',
+            window=(self.operations.transfer_window if self.operations else None) or 60,
+            seats_per_vehicle=(self.operations.seats_per_vehicle if self.operations else None) or 8)
+        arrival = request.args.get('direction', 'arrival') != 'departure'
+        return WPECMSheet.render_template(
+            'transfer_sheet.html', event=self.event, arrival=arrival,
+            groups=guest_service.group_transfers(guests, config, arrival=arrival),
+            categories=guest_service.categorize(guests), today=date.today())
 
 
 class RHECMAttendance(RHECMEventBase):

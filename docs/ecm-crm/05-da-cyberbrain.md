@@ -90,6 +90,7 @@ test di regressione: il comportamento è **congelato**, non reinterpretato.
 | `AUTOMATOR_PROMPT` + `automatorResponseSchema` | `services/automator.py`, prompt versionato e con hash |
 | Estrazione dati dall'email | `services/automator.py::extract`, deterministica (codice, date, relatori, specialità) |
 | Caricamento del documento (`automator.js`: incolla o allega, poi scarica lo zip) | Pagina `/admin/ecm/automator`; `read_document` legge txt, Word, PDF, HTML/eml; `build_folder_archive` restituisce lo zip con la cartella già nominata |
+| `extractWithRegex` + raggruppamento transfer (`app/src/app/page.tsx`) | `services/guests.py` e pagina `/event/<id>/manage/ecm/guests`: lettura riga per riga, righe scartate motivate, coperti, navette per finestra e capienza, fogli stampabili |
 
 ### Agenti che eseguono il workflow
 
@@ -133,6 +134,32 @@ iniziali sono modelli compilati con i dati estratti, quindi la pagina funziona
 sempre. Il runtime LLM resta un'aggiunta facoltativa per la prosa, non un
 prerequisito.
 
+**La lista ospiti non passa più da un modello.** L'originale provava tre modelli
+Gemini in cascata e cadeva su `extractWithRegex` solo quando mancava la chiave o
+tutte le quote erano esaurite. Qui il percorso a regole è l'unico: una lista di
+partecipanti è testo corto e formulare, e una regex provata è più prevedibile —
+e verificabile — di un modello che risponde diversamente il martedì. La pagina
+conserva per ogni riga il testo di partenza e il frammento che ogni regola ha
+letto, così un transfer sbagliato si risale fino alla causa. E le righe scartate
+si vedono con il motivo: una riga persa in silenzio è una persona che atterra
+senza nessuno ad aspettarla.
+
+**Anche quella regex era sbagliata, in otto modi.** Provata su righe realistiche
+prima di essere riscritta: `ROSSI MARIO` (il formato più comune nelle liste
+italiane) non produceva alcun nome; `Niccolò Verdi` nemmeno, per l'accento;
+`Prof. Gian Luca De Angelis` diventava `Gian Luca`; `no pranzo` contava come un
+pranzo; `vegetariano` da solo veniva buttato via perché la parola chiave *era* il
+valore; `+ 1 accompagnatore` non contava, perché `pax` era fisso a 1 e la navetta
+partiva con un posto in meno; `Hotel Excelsior Milano` diventava un ospite di
+nome Hotel; e `Bosch: 10:30` veniva letto come un arrivo perché la `h` di
+"h 10:30" non era ancorata. Ognuno è un test.
+
+**Nome e cognome, quando la riga non lo dice, non si indovinano.** `Mario Rossi`
+e `Rossi Mario` sono gli stessi caratteri nello stesso ordine. La piattaforma
+cerca un segnale vero — la virgola di `Rossi, Mario`, il cognome in maiuscolo di
+`ROSSI Mario`, un nome proprio riconoscibile — e quando non ce n'è lo dichiara,
+mostrando in pagina un pulsante per invertire i due.
+
 **Le espressioni regolari sono state strette, non copiate.** Il pattern originale
 del codice evento accettava anche `[A-Z]{1,3}\d{2,5}`, che pesca `IT12345` da una
 partita IVA, `A101` da una sala e `FT2026` da una fattura: un codice sbagliato
@@ -156,6 +183,7 @@ il budget dello sponsor.
 | Import archivio | **Fatto** — `/admin/ecm/import`, con le segnalazioni riga per riga |
 | Anagrafica evento e checklist | **Fatto** — panoramica, accreditamento, scadenze con urgenza |
 | Stampa unione | **Fatto** — import CSV/XLSX del foglio ospedali verso `InvitationBatch` |
+| Lista ospiti, transfer e coperti | **Fatto** — `/event/<id>/manage/ecm/guests`, regole soltanto: il percorso AI dell'originale non è stato portato perché quello a regole lo copre per intero |
 | Automator | **Fatto nella parte deterministica** — `/admin/ecm/automator` legge il materiale, estrae, mostra da quale frase, costruisce e scarica la cartella. Resta facoltativo il runtime LLM che esegue `build_request`/`validate_response` per la prosa |
 | Brochure e sfondi generati | Non portato: serve una funzione di generazione immagini, da rivalutare |
 | Voice control | Non portato: `js/core/voice.js` non è mai stato citato come necessario |

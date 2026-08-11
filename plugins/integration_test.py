@@ -406,7 +406,7 @@ def csrf(client, scenario):
 
 
 @pytest.mark.parametrize('path', (
-    '/', '/accreditation', '/attendance', '/participants', '/certificates', '/invitations',
+    '/', '/accreditation', '/attendance', '/participants', '/certificates', '/invitations', '/guests',
 ))
 def test_event_pages_render(client, scenario, path):
     response = client.get(f'/event/{scenario["event"].id}/manage/ecm{path}')
@@ -475,6 +475,102 @@ def test_an_unreadable_attachment_does_not_lose_the_rest(client, csrf):
 def test_without_material_the_automator_builds_nothing(client, csrf):
     response = client.post('/admin/ecm/automator', data={'csrf_token': csrf, 'text': ''})
     assert response.status_code == 302
+
+
+# --- the guest list -----------------------------------------------------------
+
+GUEST_LIST = '''Nome;Cognome;Email;Arrivo
+ROSSI MARIO, mario.rossi@asl.it, 3401234567, arrivo 09:30, pranzo
+Dott.ssa Anna Verdi, anna.verdi@asl.it, arrivo 09:45, pranzo
+Prof. Gian Luca De Angelis, gl.deangelis@ospedale.it, arrivo 09:50, pranzo
+Neri Sara + 1 accompagnatore, s.neri@ospedale.it, arrivo 10:10, pranzo
+Ferri Paolo, p.ferri@asl.it, mezzi propri, no pranzo
+Bianchi Luca - non partecipa
+sala congressi piano terra
+'''
+
+
+def test_the_guest_list_is_imported_and_stored(client, csrf, scenario):
+    from indico_ecm.models.guests import EventGuest
+
+    response = client.post(f'/event/{scenario["event"].id}/manage/ecm/guests',
+                           data={'csrf_token': csrf, 'text': GUEST_LIST, 'replace': '1'})
+    assert response.status_code == 200
+    rows = EventGuest.query.filter_by(event_id=scenario['event'].id).all()
+    assert {row.full_name for row in rows} == {
+        'Mario Rossi', 'Anna Verdi', 'Gian Luca De Angelis', 'Sara Neri', 'Paolo Ferri'}
+    # the companion is a seat, and the source line is kept for every row
+    assert next(row.pax for row in rows if row.last_name == 'Neri') == 2
+    assert all(row.source_row for row in rows)
+
+
+def test_rejected_rows_are_shown_with_their_reason(client, csrf, scenario):
+    response = client.post(f'/event/{scenario["event"].id}/manage/ecm/guests',
+                           data={'csrf_token': csrf, 'text': GUEST_LIST, 'replace': '1'})
+    body = response.data.decode()
+    assert 'non partecipa' in body
+    assert 'né un nome né un contatto' in body
+
+
+def test_covers_and_shuttles_are_computed_from_the_list(client, csrf, scenario):
+    event_id = scenario['event'].id
+    client.post(f'/event/{event_id}/manage/ecm/guests',
+                data={'csrf_token': csrf, 'text': GUEST_LIST, 'replace': '1'})
+    client.post(f'/event/{event_id}/manage/ecm/guests',
+                data={'csrf_token': csrf, 'action': 'settings', 'strategy': 'vehicle',
+                      'window': '60', 'seats': '2'})
+    body = ' '.join(re.sub(r'<[^>]+>', ' ', client.get(f'/event/{event_id}/manage/ecm/guests')
+                           .data.decode()).split())
+    # four rows asked for lunch but one brings a companion: five covers
+    assert 'Coperti a pranzo 5' in body
+    assert '09:00 - 10:00' in body
+    assert 'veicolo 2' in body  # three pax in that window, two seats per vehicle
+
+
+def test_the_transfer_sheet_prints(client, csrf, scenario):
+    event_id = scenario['event'].id
+    client.post(f'/event/{event_id}/manage/ecm/guests',
+                data={'csrf_token': csrf, 'text': GUEST_LIST, 'replace': '1'})
+    sheet = client.get(f'/event/{event_id}/manage/ecm/guests/transfer-sheet')
+    assert sheet.status_code == 200
+    assert 'Mario Rossi' in sheet.data.decode()
+    assert client.get(f'/event/{event_id}/manage/ecm/guests/transfer-sheet'
+                      '?direction=departure').status_code == 200
+
+
+def test_an_uncertain_name_can_be_swapped_from_the_page(client, csrf, scenario):
+    from indico_ecm.models.guests import EventGuest
+
+    event_id = scenario['event'].id
+    client.post(f'/event/{event_id}/manage/ecm/guests',
+                data={'csrf_token': csrf, 'text': 'Bosch Kellner, k.bosch@klinik.de', 'replace': '1'})
+    row = EventGuest.query.filter_by(event_id=event_id).one()
+    assert not row.name_order_certain
+    before = (row.first_name, row.last_name)
+    client.post(f'/event/{event_id}/manage/ecm/guests',
+                data={'csrf_token': csrf, 'action': 'swap', 'guest_id': row.id})
+    row = EventGuest.query.filter_by(event_id=event_id).one()
+    assert (row.first_name, row.last_name) == (before[1], before[0])
+    assert row.name_order_certain
+
+
+def test_a_guest_list_spreadsheet_is_read_too(client, csrf, scenario):
+    from openpyxl import Workbook
+
+    from indico_ecm.models.guests import EventGuest
+
+    workbook = Workbook()
+    workbook.active.append(['Nome', 'Email', 'Arrivo'])
+    workbook.active.append(['BIANCHI GIULIA', 'g.bianchi@asl.it', 'arrivo 11:00'])
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    response = client.post(f'/event/{scenario["event"].id}/manage/ecm/guests',
+                           data={'csrf_token': csrf, 'replace': '1',
+                                 'list': (io.BytesIO(buffer.getvalue()), 'ospiti.xlsx')},
+                           content_type='multipart/form-data')
+    assert response.status_code == 200
+    rows = EventGuest.query.filter_by(event_id=scenario['event'].id).all()
+    assert [row.full_name for row in rows] == ['Giulia Bianchi']
 
 
 def test_evaluating_from_the_page_creates_proposals(client, csrf, scenario):
