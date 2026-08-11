@@ -1,9 +1,11 @@
 {% extends 'layout/admin_page.html' %}
-{% from 'ecm:_macros.html' import csrf %}
+{% from 'ecm:_macros.html' import admin_nav, csrf %}
 
 {% block title %}{% trans %}Provider ECM{% endtrans %}{% endblock %}
 
 {% block content %}
+    {{ admin_nav('ecm.providers') }}
+
     <table class="i-table-widget">
         <thead><tr><th>Nome</th><th>Codice</th><th>Regione</th><th>Prefisso attestati</th><th>Attivo</th></tr></thead>
         <tbody>

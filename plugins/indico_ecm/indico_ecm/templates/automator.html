@@ -1,0 +1,74 @@
+{% extends 'layout/admin_page.html' %}
+{% from 'ecm:_macros.html' import admin_nav, csrf %}
+
+{% block title %}{% trans %}Da documento a cartella evento{% endtrans %}{% endblock %}
+
+{% block content %}
+    {{ admin_nav('ecm.automator') }}
+
+    <p>
+        {% trans %}Incolla l'email dello sponsor e carica gli allegati (txt, Word, PDF, HTML).
+        La piattaforma estrae ciò che può con regole deterministiche, dice da quale frase ha preso
+        ogni valore, elenca ciò che non ha capito e produce la cartella evento con i documenti
+        iniziali.{% endtrans %}
+    </p>
+
+    <form method="POST" enctype="multipart/form-data">
+        {{ csrf() }}
+        <p>
+            <textarea name="text" rows="10" cols="100"
+                      placeholder="Incolla qui il testo dell'email…">{{ form.get('text', '') }}</textarea>
+        </p>
+        <p>
+            <input type="file" name="documents" multiple accept=".txt,.md,.csv,.docx,.pdf,.html,.eml">
+        </p>
+        <table class="i-table-widget">
+            <tr><td>Nome evento</td><td><input name="event_name" size="40" value="{{ form.get('event_name', '') }}"></td></tr>
+            <tr><td>Sponsor</td><td><input name="sponsor" value="{{ form.get('sponsor', '') }}"></td></tr>
+            <tr><td>Luogo</td><td><input name="place" value="{{ form.get('place', '') }}"></td></tr>
+            <tr><td>Città</td><td><input name="city" value="{{ form.get('city', '') }}"></td></tr>
+        </table>
+        <button class="i-button highlight" type="submit">{% trans %}Analizza{% endtrans %}</button>
+        <button class="i-button" type="submit" name="download" value="1">
+            {% trans %}Analizza e scarica la cartella (.zip){% endtrans %}
+        </button>
+    </form>
+
+    {% if extraction %}
+        <h3>{% trans %}Cosa ho ricavato{% endtrans %}
+            <small style="font-weight:normal;color:#666">({{ source_length }} caratteri analizzati)</small></h3>
+        <table class="i-table-widget">
+            <thead><tr><th>Campo</th><th>Valore</th><th>Da quale frase</th></tr></thead>
+            <tbody>
+                <tr><td>Codice evento</td><td>{{ extraction.event_code or '—' }}</td>
+                    <td><small>{{ extraction.evidence.get('event_code', '') }}</small></td></tr>
+                <tr><td>Data</td><td>{{ extraction.event_date or '—' }}
+                        {% if extraction.end_date %} → {{ extraction.end_date }}{% endif %}</td>
+                    <td><small>{{ extraction.evidence.get('event_date', '') }}</small></td></tr>
+                <tr><td>Relatori</td><td>{{ extraction.speakers | join(', ') or '—' }}</td><td></td></tr>
+                <tr><td>Specialità</td><td>{{ extraction.specialty }}</td>
+                    <td><small>parole chiave del testo</small></td></tr>
+                <tr><td>Modalità</td><td>{{ extraction.activity_format }}</td>
+                    <td><small>dedotta dal testo</small></td></tr>
+                <tr><td>Cartella</td><td><code>{{ folder }}</code></td>
+                    <td><small>convenzione del provider</small></td></tr>
+            </tbody>
+        </table>
+
+        {% if extraction.unresolved %}
+            <div class="i-callout">
+                {% trans %}Non ricavato dal materiale{% endtrans %}:
+                <strong>{{ extraction.unresolved | join(', ') }}</strong>.
+                {% trans %}Compila i campi qui sopra e rilancia l'analisi.{% endtrans %}
+            </div>
+        {% endif %}
+
+        <h3>{% trans %}Documenti che verranno creati{% endtrans %}</h3>
+        {% for name, content in files.items() %}
+            <details>
+                <summary><code>{{ name }}</code></summary>
+                <pre style="white-space:pre-wrap;background:#fafafa;border:1px solid #ddd;padding:1em">{{ content }}</pre>
+            </details>
+        {% endfor %}
+    {% endif %}
+{% endblock %}

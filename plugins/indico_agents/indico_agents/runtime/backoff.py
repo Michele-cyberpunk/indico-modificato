@@ -55,4 +55,5 @@ def lease_expiry(now, *, seconds=DEFAULT_LEASE_SECONDS):
 
 
 def should_give_up(attempts, max_attempts):
+    """Whether a task has exhausted its retries and belongs in the failed list."""
     return attempts >= max_attempts

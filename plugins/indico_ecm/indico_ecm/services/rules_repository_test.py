@@ -14,7 +14,7 @@ def test_roundtrip_preserves_every_field():
     rules = RuleSet(version='2026.1-lombardia', min_attendance_ratio=Decimal('0.9'),
                     assessment_required=True, assessment_pass_ratio=Decimal('0.75'), survey_required=True,
                     credits_mode=CreditsMode.per_hour, accredited_credits=Decimal('12.5'),
-                    credits_per_hour=Decimal('1.5'), rounding=Rounding.half_nearest, max_credits=Decimal('50'),
+                    credits_per_hour=Decimal('1.5'), rounding=Rounding.half_nearest, max_credits=Decimal(50),
                     accredited_professions=frozenset({'Medico chirurgo', 'Infermiere'}),
                     accredited_disciplines=frozenset({'Cardiologia'}), require_verified_profile=True,
                     require_confirmed_registration=True, require_settled_payment=True, region='Lombardia',
@@ -23,7 +23,7 @@ def test_roundtrip_preserves_every_field():
 
 
 def test_dump_is_json_serializable():
-    rules = RuleSet(version='2026.1', accredited_credits=Decimal('9'))
+    rules = RuleSet(version='2026.1', accredited_credits=Decimal(9))
     assert json.loads(json.dumps(dump_ruleset(rules)))['accredited_credits'] == '9'
 
 

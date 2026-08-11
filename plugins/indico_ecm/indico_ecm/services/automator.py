@@ -36,7 +36,7 @@ from indico_ecm.services.specialty import identify_event_format, identify_specia
 
 #: The instruction ported from `state.js`, kept as the provider wrote it.
 #: Change it by adding a new version, never by editing this string in place.
-AUTOMATOR_PROMPT_V1 = """## Role and Goal
+AUTOMATOR_PROMPT_V1 = '''## Role and Goal
 You are an expert event management assistant for a medical event organizer. Your goal is to analyze
 provided email text and documents to automatically set up a new event. You must extract key
 information, generate the starting documents, and prepare the folder structure.
@@ -58,7 +58,7 @@ report_template.txt, email_draft.html.
 - Report every value you extracted together with the sentence you took it from.
 
 ## Output Format
-Return a single JSON object adhering to the provided schema, with no text outside it."""
+Return a single JSON object adhering to the provided schema, with no text outside it.'''
 
 AUTOMATOR_PROMPT_VERSION = 'automator-v1'
 
@@ -103,13 +103,59 @@ def prompt_fingerprint(prompt=AUTOMATOR_PROMPT_V1):
     return hashlib.sha256(prompt.encode()).hexdigest()[:16]
 
 
-#: Event codes as the provider writes them: 0116_GDBO, C123, 2026-ABC
-EVENT_CODE_RE = re.compile(r'\b(\d{3,4}[_-][A-Z]{2,6}|[A-Z]{1,3}\d{2,5}|\d{4}-[A-Z]{2,6})\b')
+#: The provider's own convention: 0116_GDBO, 2026-CARD. Deliberately narrow —
+#: a looser pattern matches VAT numbers, room names and invoice references.
+EVENT_CODE_RE = re.compile(r'\b(\d{3,4}[_-][A-Z]{2,6}|\d{4}-[A-Z]{2,6})\b')
+#: Words that announce a code, after which almost anything is one
+CODE_KEYWORD_RE = re.compile(r'(?:codice\s+evento|codice|cod\.|rif\.|rif\b)\s*[:\-\u2013]?', re.IGNORECASE)
+CODE_AFTER_KEYWORD_RE = re.compile(r'\s*([A-Za-z0-9][A-Za-z0-9_\-/]{2,19})\b')
+
 DATE_RE = re.compile(r'\b(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}-\d{2}-\d{2})\b')
-#: "Dott. Mario Rossi", "Prof.ssa Anna Verdi"
-_TITLE = r'(?:Dott\.ssa|Dott\.|Prof\.ssa|Prof\.|Dr\.)'
-_NAME = r"[A-ZÀ-Ú][\w'À-ú]+"
-SPEAKER_RE = re.compile(rf'\b{_TITLE}\s*({_NAME}(?:\s+{_NAME}){{0,2}})')
+
+#: "Dott. Mario Rossi", "Prof.ssa Anna Verdi", "Prof. Gian Luca De Angelis"
+_TITLE = r'(?:Dott\.ssa|Dott\.|Prof\.ssa|Prof\.|Dr\.ssa|Dr\.)'
+_NAME = r"[A-ZÀ-Ú][\w'\u2019À-ú]+"
+#: Italian and other European surname particles, which are lowercase and would
+#: otherwise cut a surname in half ("De Angelis" -> "De")
+_PARTICLE = r"(?:de(?:gli|lla|llo|lle|l|i|n|r)?|di|da|dal|del|della|van|von|ten|ter|la|lo|d')"
+_TOKEN = rf'(?:{_NAME}|{_PARTICLE})\b'
+SPEAKER_RE = re.compile(rf'\b{_TITLE}\s*({_TOKEN}(?:\s+{_TOKEN}){{0,3}})')
+#: Role words that follow a name and are not part of it
+ROLE_WORDS = frozenset({'presidente', 'direttore', 'responsabile', 'coordinatore', 'moderatore',
+                        'relatore', 'relatrice', 'segretario', 'segretaria', 'docente', 'tutor'})
+
+
+def find_event_code(text):
+    """Find the event code, preferring one that is announced as such.
+
+    A code introduced by "codice" or "rif." is taken as given; otherwise only
+    the provider's own format is accepted. Anything looser matches a VAT number
+    or a room name, and a wrong code sends the accreditation request to the
+    wrong folder.
+    """
+    for keyword in CODE_KEYWORD_RE.finditer(text or ''):
+        match = CODE_AFTER_KEYWORD_RE.match(text, keyword.end())
+        if match and any(char.isdigit() for char in match.group(1)):
+            return match.group(1)
+    match = EVENT_CODE_RE.search(text or '')
+    return match.group(1) if match else ''
+
+
+def find_speakers(text):
+    """Names introduced by an academic or medical title.
+
+    Trailing role words are dropped: "Dott. Mario Rossi Presidente" is a person
+    called Mario Rossi, not one called Mario Rossi Presidente.
+    """
+    speakers = []
+    for raw in SPEAKER_RE.findall(text or ''):
+        words = raw.split()
+        while words and words[-1].casefold() in ROLE_WORDS:
+            words.pop()
+        name = ' '.join(words).strip()
+        if name and name not in speakers:
+            speakers.append(name)
+    return speakers
 
 
 @dataclass
@@ -152,10 +198,10 @@ def extract(text, *, known_sponsor='', known_location=''):
     text = text or ''
     result = Extraction(sponsor=known_sponsor, location=known_location)
 
-    codes = EVENT_CODE_RE.findall(text)
-    if codes:
-        result.event_code = codes[0]
-        result.evidence['event_code'] = _sentence_containing(text, codes[0])
+    code = find_event_code(text)
+    if code:
+        result.event_code = code
+        result.evidence['event_code'] = _sentence_containing(text, code)
     else:
         result.unresolved.append('event_code')
 
@@ -169,10 +215,7 @@ def extract(text, *, known_sponsor='', known_location=''):
     else:
         result.unresolved.append('event_date')
 
-    speakers = []
-    for name in SPEAKER_RE.findall(text):
-        if name not in speakers:
-            speakers.append(name)
+    speakers = find_speakers(text)
     result.speakers = speakers
     if not speakers:
         result.unresolved.append('speakers')
@@ -268,3 +311,180 @@ def validate_response(payload, *, deterministic=None):
         'image_prompt': payload.get('imagePrompt', ''),
         'evidence': payload.get('evidence', {}),
     }
+
+
+#: What the starting documents of an event folder contain.
+#: Deliberately produced from the extracted data, not from a model: an empty
+#: section a person fills in is better than a plausible paragraph nobody wrote.
+FOLDER_TEMPLATES = {
+    'info_evento.txt': '''EVENTO
+======
+Nome:        {event_name}
+Codice:      {event_code}
+Data:        {dates}
+Luogo:       {place}
+Sponsor:     {sponsor}
+Modalità:    {activity_format}
+Specialità:  {specialty}
+
+RELATORI
+--------
+{speakers}
+
+NOTE
+----
+{unresolved_note}
+''',
+    'briefing.txt': '''BRIEFING INTERNO — {event_name}
+{underline}
+
+Data:     {dates}
+Luogo:    {place}
+Sponsor:  {sponsor}
+Codice:   {event_code}
+
+RUOLI
+-----
+Responsabile scientifico:
+Project manager:
+Segreteria:
+Grafica:
+Hostess:
+
+SCADENZE
+--------
+Accreditamento:
+Contratti sponsor:
+Grafica:
+Lettere di incarico:
+Slide kit:
+
+LOGISTICA
+---------
+Sede:
+Catering:
+Hotel:
+Materiali:
+''',
+    'agenda.txt': '''AGENDA — {event_name}
+{underline}
+{dates} — {place}
+
+  ora    argomento                              relatore
+  -----  -------------------------------------  ------------------------
+{agenda_rows}
+''',
+    'report_template.txt': '''REPORT POST EVENTO — {event_name}
+{underline}
+
+PARTECIPAZIONE
+--------------
+Iscritti:
+Presenti:
+Aventi diritto ai crediti:
+Attestati emessi:
+
+VALUTAZIONE
+-----------
+Questionari raccolti:
+Gradimento medio:
+Esito valutazione apprendimento:
+
+OSSERVAZIONI
+------------
+
+AZIONI PER LA PROSSIMA EDIZIONE
+-------------------------------
+''',
+    'email_draft.html': '''<p>Gentile Dottoressa, Gentile Dottore,</p>
+<p>siamo lieti di invitarLa all'evento <strong>{event_name}</strong>,
+che si terrà {dates}{place_clause}.</p>
+<p>{specialty_clause}</p>
+<p>Per iscriversi: <a href="#">link di iscrizione</a></p>
+<p>Cordiali saluti,<br>La segreteria organizzativa</p>
+''',
+}
+
+
+def _folder_context(extraction, *, event_name='', sponsor='', place=''):
+    name = event_name or extraction.event_name or 'Evento senza titolo'
+    dates = ''
+    if extraction.event_date:
+        dates = extraction.event_date.strftime('%d/%m/%Y')
+        if extraction.end_date and extraction.end_date != extraction.event_date:
+            dates += f" - {extraction.end_date.strftime('%d/%m/%Y')}"
+    speakers = '\n'.join(f'- {speaker}' for speaker in extraction.speakers) or '- (da confermare)'
+    agenda_rows = '\n'.join(f'  {"":5}  {"":37}  {speaker}' for speaker in extraction.speakers)
+    unresolved = ', '.join(extraction.unresolved)
+    return {
+        'event_name': name,
+        'underline': '=' * min(len(name) + 20, 70),
+        'event_code': extraction.event_code or '(da assegnare)',
+        'dates': dates or '(da confermare)',
+        'place': place or extraction.location or '(da confermare)',
+        'place_clause': f' presso {place or extraction.location}' if (place or extraction.location) else '',
+        'sponsor': sponsor or extraction.sponsor or '(da confermare)',
+        'activity_format': extraction.activity_format,
+        'specialty': extraction.specialty,
+        'specialty_clause': f'Area tematica rilevata: {extraction.specialty}.' if extraction.specialty else '',
+        'speakers': speakers,
+        'agenda_rows': agenda_rows or '  (da compilare)',
+        'unresolved_note': (f'Dati non ricavati dal materiale: {unresolved}.'
+                            if unresolved else 'Tutti i dati sono stati ricavati dal materiale.'),
+    }
+
+
+def build_folder_files(extraction, *, event_name='', sponsor='', place=''):
+    """The starting documents of an event folder, as `{filename: text}`."""
+    context = _folder_context(extraction, event_name=event_name, sponsor=sponsor, place=place)
+    return {name: template.format(**context) for name, template in FOLDER_TEMPLATES.items()}
+
+
+def build_folder_archive(extraction, *, event_name='', sponsor='', place='', city='', extra_files=None):
+    """Build the event folder as a zip, named by the provider's convention.
+
+    Returns `(folder_name, zip_bytes)`. The archive contains one directory named
+    after the folder, so unzipping it on the shared drive puts everything in the
+    right place in one step.
+    """
+    import io
+    import zipfile
+
+    folder = folder_name_for(extraction, event_name=event_name, city=city or place) or 'EVENTO'
+    files = build_folder_files(extraction, event_name=event_name, sponsor=sponsor, place=place)
+    files |= (extra_files or {})
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
+        for name, content in files.items():
+            data = content.encode('utf-8') if isinstance(content, str) else content
+            archive.writestr(f'{folder}/{name}', data)
+    return folder, buffer.getvalue()
+
+
+def read_document(content, filename=''):
+    """Extract text from an uploaded file.
+
+    Handles what actually arrives from a sponsor: plain text, Word and PDF.
+    Anything else is reported rather than guessed at.
+    """
+    lowered = (filename or '').lower()
+    if lowered.endswith(('.txt', '.md', '.csv')):
+        return content.decode('utf-8', 'replace')
+    if lowered.endswith(('.docx', '.docm')):
+        import io
+
+        from docx import Document
+        document = Document(io.BytesIO(content))
+        parts = [paragraph.text for paragraph in document.paragraphs]
+        parts += [cell.text for table in document.tables for row in table.rows for cell in row.cells]
+        return '\n'.join(part for part in parts if part.strip())
+    if lowered.endswith('.pdf'):
+        import io
+
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(content))
+        return '\n'.join((page.extract_text() or '') for page in reader.pages)
+    if lowered.endswith(('.eml', '.msg', '.html', '.htm')):
+        text = content.decode('utf-8', 'replace')
+        return re.sub(r'<[^>]+>', ' ', text)
+    raise ValueError(f'formato non supportato: {filename or "file senza nome"}')

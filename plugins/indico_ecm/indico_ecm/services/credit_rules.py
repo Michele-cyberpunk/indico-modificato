@@ -120,9 +120,9 @@ class RuleSet:
     survey_required: bool = True
     credits_mode: CreditsMode = CreditsMode.fixed
     #: Credits granted by the accreditation (fixed mode)
-    accredited_credits: Decimal = Decimal('0')
+    accredited_credits: Decimal = Decimal(0)
     #: Credits per attended hour (per_hour mode)
-    credits_per_hour: Decimal = Decimal('1')
+    credits_per_hour: Decimal = Decimal(1)
     rounding: Rounding = Rounding.exact
     max_credits: Decimal | None = None
     #: Empty means every profession is accredited
@@ -241,11 +241,11 @@ def _apply_rounding(value, rounding):
     if rounding is Rounding.exact:
         return value
     if rounding is Rounding.integer_down:
-        return value.quantize(Decimal('1'), rounding=ROUND_DOWN)
+        return value.quantize(Decimal(1), rounding=ROUND_DOWN)
     doubled = value * 2
     if rounding is Rounding.half_down:
-        return doubled.quantize(Decimal('1'), rounding=ROUND_DOWN) / 2
-    return doubled.quantize(Decimal('1'), rounding=ROUND_HALF_UP) / 2
+        return doubled.quantize(Decimal(1), rounding=ROUND_DOWN) / 2
+    return doubled.quantize(Decimal(1), rounding=ROUND_HALF_UP) / 2
 
 
 def _ratio(numerator, denominator):

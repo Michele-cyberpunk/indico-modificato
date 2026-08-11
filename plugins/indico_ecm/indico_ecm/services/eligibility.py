@@ -30,7 +30,7 @@ class NotAuthorized(Exception):
 def build_participation(registration, *, hcp_profile=None, assessment=None, survey_completed=None):
     """Collect everything known about a participant, as pure data."""
     profile = hcp_profile if hcp_profile is not None else find_hcp_profile(registration)
-    correct, total = assessment if assessment else _find_assessment(registration)
+    correct, total = assessment or _find_assessment(registration)
     return Participation(
         intervals=attendance_service.build_intervals(registration),
         profession=(profile.profession if profile else ''),

@@ -32,7 +32,7 @@ def test_per_physician_and_total():
 def test_meal_rates_replace_the_lump_sum():
     sheet = CostSheet(physicians=2, room=money(100), catering=money(999), lunches=2, coffee_breaks=3,
                       dinners=1)
-    priced = sheet.with_rates(MealRates(lunch=Decimal('25'), coffee_break=Decimal('8'), dinner=Decimal('45')))
+    priced = sheet.with_rates(MealRates(lunch=Decimal(25), coffee_break=Decimal(8), dinner=Decimal(45)))
     assert priced.catering == Decimal('119.00')
     assert priced.per_physician == Decimal('219.00')
     assert sheet.catering == Decimal('999.00')

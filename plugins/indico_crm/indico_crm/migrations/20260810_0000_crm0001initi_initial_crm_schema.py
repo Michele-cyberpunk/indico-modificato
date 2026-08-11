@@ -7,7 +7,7 @@ Create Date: 2026-08-10
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql  # noqa: F401
+from sqlalchemy.dialects import postgresql
 
 from indico.core.db.sqlalchemy import UTCDateTime
 

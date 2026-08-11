@@ -77,7 +77,7 @@ class RHApprovalDecision(RHAdminBase):
                 approval_service.reject(self.approval, user=session.user, note=note)
             else:
                 raise approval_service.ApprovalError('decisione non valida')
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             db.session.rollback()
             if request.is_json:
                 return jsonify(error=str(exc)), 400

@@ -26,7 +26,7 @@ from indico_ecm.services.documents import qr_png, render_pdf
 logger = Logger.get('plugin.ecm.certificate')
 
 
-CERTIFICATE_HTML = """<!DOCTYPE html>
+CERTIFICATE_HTML = '''<!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="utf-8">
@@ -81,7 +81,7 @@ CERTIFICATE_HTML = """<!DOCTYPE html>
   </div>
 </div>
 </body>
-</html>"""
+</html>'''
 
 
 def build_context(certificate, *, provider, participant_name, event, verification_url,

@@ -32,7 +32,7 @@ def program():
 
 @pytest.fixture
 def rules():
-    return RuleSet(version='2026.1', accredited_credits=Decimal('9'), min_attendance_ratio=Decimal('0.9'),
+    return RuleSet(version='2026.1', accredited_credits=Decimal(9), min_attendance_ratio=Decimal('0.9'),
                    assessment_pass_ratio=Decimal('0.75'))
 
 
@@ -78,7 +78,7 @@ def test_presence_during_lunch_does_not_count(program):
 def test_full_attendance_earns_the_accredited_credits(program, rules):
     outcome = evaluate(rules, compliant(), program)
     assert outcome.eligible
-    assert outcome.credits == Decimal('9')
+    assert outcome.credits == Decimal(9)
     assert outcome.reasons == ()
     assert outcome.attendance_ratio == Decimal('1.0000')
     assert outcome.rule_version == '2026.1'
@@ -137,7 +137,7 @@ def test_all_failing_reasons_are_reported_together(program, rules):
 
 
 def test_profession_not_accredited(program, rules):
-    restricted = RuleSet(version='2026.1', accredited_credits=Decimal('9'),
+    restricted = RuleSet(version='2026.1', accredited_credits=Decimal(9),
                          accredited_professions=frozenset({'Medico chirurgo'}))
     outcome = evaluate(restricted, compliant(profession='Infermiere'), program)
     assert outcome.reasons == (Reason.profession_not_accredited,)
@@ -163,17 +163,17 @@ def test_per_hour_mode(program):
 
 def test_per_hour_mode_respects_max_credits(program):
     rules = RuleSet(version='2026.2', credits_mode=CreditsMode.per_hour, credits_per_hour=Decimal('1.5'),
-                    max_credits=Decimal('5'), assessment_required=False, survey_required=False,
+                    max_credits=Decimal(5), assessment_required=False, survey_required=False,
                     require_verified_profile=False)
     outcome = evaluate(rules, Participation(intervals=full_attendance()), program)
-    assert outcome.credits == Decimal('5')
+    assert outcome.credits == Decimal(5)
 
 
 @pytest.mark.parametrize(('rounding', 'expected'), (
     (Rounding.exact, Decimal('7.25')),
     (Rounding.half_down, Decimal('7.0')),
     (Rounding.half_nearest, Decimal('7.5')),
-    (Rounding.integer_down, Decimal('7')),
+    (Rounding.integer_down, Decimal(7)),
 ))
 def test_rounding_modes(program, rounding, expected):
     rules = RuleSet(version='2026.3', accredited_credits=Decimal('7.25'), rounding=rounding,

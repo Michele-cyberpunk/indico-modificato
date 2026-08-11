@@ -21,6 +21,7 @@ import io
 import os
 import re
 import uuid
+import zipfile
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
@@ -146,7 +147,7 @@ def scenario(context, unique):
     version = f'test-{unique}'
     db.session.add(CreditRuleVersion(version=version, valid_from=date(2026, 1, 1),
                                      payload=dump_ruleset(RuleSet(version=version,
-                                                                  accredited_credits=Decimal('9'),
+                                                                  accredited_credits=Decimal(9),
                                                                   credits_mode=CreditsMode.fixed))))
     accreditation = EventAccreditation(event=event, provider=provider, activity_code=f'AG-{unique}',
                                        activity_format=ActivityFormat.residential,
@@ -203,7 +204,7 @@ def test_a_compliant_participant_is_eligible(scenario):
 
     outcome = eligibility_service.evaluate_registration(scenario['registration'])
     assert outcome.eligible
-    assert outcome.credits == Decimal('9')
+    assert outcome.credits == Decimal(9)
     assert outcome.attended_minutes == Decimal(360)
     assert outcome.reasons == ()
 
@@ -413,11 +414,67 @@ def test_event_pages_render(client, scenario, path):
 
 
 @pytest.mark.parametrize('path', (
-    '/admin/ecm/providers', '/admin/ecm/import', '/admin/crm/contacts', '/admin/crm/companies',
-    '/admin/crm/opportunities', '/admin/agents/',
+    '/admin/ecm/providers', '/admin/ecm/import', '/admin/ecm/automator', '/admin/crm/contacts',
+    '/admin/crm/companies', '/admin/crm/opportunities', '/admin/agents/',
 ))
 def test_admin_pages_render(client, path):
     assert client.get(path).status_code == 200
+
+
+# --- from a document to an event folder ---------------------------------------
+
+SPONSOR_EMAIL = '''Buongiorno,
+vi confermiamo l'evento 0116_GDBO previsto per il 15/09/2026 presso l'Hotel Excelsior di Milano.
+Il programma prevede interventi su scompenso cardiaco e stenosi aortica.
+Relatori confermati: Dott. Mario Rossi e Prof. Gian Luca De Angelis.
+Cordiali saluti.'''
+
+
+def test_the_automator_shows_what_it_extracted_and_where_from(client, csrf):
+    response = client.post('/admin/ecm/automator',
+                           data={'csrf_token': csrf, 'text': SPONSOR_EMAIL,
+                                 'event_name': 'Cardio Update', 'sponsor': 'Acme Pharma',
+                                 'place': 'Hotel Excelsior', 'city': 'Milano'})
+    assert response.status_code == 200
+    body = response.data.decode()
+    assert '0116_GDBO' in body
+    assert '2026-09-15' in body
+    # the surname particle is kept: the person is not called "Gian Luca De"
+    assert 'Gian Luca De Angelis' in body
+    assert '0915 CARDIO' in body  # the provider's folder convention
+    assert 'info_evento.txt' in body
+
+
+def test_the_automator_hands_back_the_event_folder(client, csrf):
+    response = client.post('/admin/ecm/automator',
+                           data={'csrf_token': csrf, 'text': SPONSOR_EMAIL, 'download': '1',
+                                 'event_name': 'Cardio Update', 'sponsor': 'Acme Pharma',
+                                 'place': 'Hotel Excelsior', 'city': 'Milano'})
+    assert response.status_code == 200
+    assert response.mimetype == 'application/zip'
+    with zipfile.ZipFile(io.BytesIO(response.data)) as archive:
+        names = archive.namelist()
+        folder = names[0].split('/')[0]
+        assert folder.startswith('0915 CARDIO ')
+        assert {name.split('/', 1)[1] for name in names} == {
+            'info_evento.txt', 'briefing.txt', 'agenda.txt', 'report_template.txt', 'email_draft.html'}
+        info = archive.read(f'{folder}/info_evento.txt').decode()
+        assert '0116_GDBO' in info and 'Acme Pharma' in info
+
+
+def test_an_unreadable_attachment_does_not_lose_the_rest(client, csrf):
+    response = client.post('/admin/ecm/automator',
+                           data={'csrf_token': csrf, 'text': SPONSOR_EMAIL,
+                                 'documents': (io.BytesIO(b'\x00\x01\x02'), 'slide.pptx')},
+                           content_type='multipart/form-data')
+    assert response.status_code == 200
+    assert '0116_GDBO' in response.data.decode()
+    assert 'formato non supportato' in response.data.decode()
+
+
+def test_without_material_the_automator_builds_nothing(client, csrf):
+    response = client.post('/admin/ecm/automator', data={'csrf_token': csrf, 'text': ''})
+    assert response.status_code == 302
 
 
 def test_evaluating_from_the_page_creates_proposals(client, csrf, scenario):

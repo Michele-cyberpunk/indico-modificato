@@ -70,7 +70,7 @@ def deliver(entry, *, now=None, next_run_after=None, should_give_up=None):
         return entry
     try:
         entry.external_ref = target_handler(entry) or ''
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         entry.last_error = str(exc)[:2000]
         if should_give_up and should_give_up(entry.attempts, entry.max_attempts):
             entry.state = OutboxState.abandoned

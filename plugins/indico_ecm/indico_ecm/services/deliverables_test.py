@@ -122,7 +122,7 @@ def test_readiness(states, expected):
 def test_readiness_ignores_not_applicable():
     states = dict.fromkeys(Deliverable, DeliverableState.not_applicable)
     states[Deliverable.accreditation] = DeliverableState.done
-    assert readiness(states) == 1.0
+    assert readiness(states) == pytest.approx(1.0)
 
 
 def test_only_accreditation_blocks_credits():

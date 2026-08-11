@@ -101,7 +101,7 @@ def parse_date(value):
         except ValueError:
             continue
     try:
-        return datetime.fromisoformat(text.replace('Z', '+00:00')).date()
+        return datetime.fromisoformat(text).date()
     except ValueError:
         return None
 

@@ -42,9 +42,9 @@ def money(value):
 class MealRates:
     """Per-meal rates, when the provider prices meals rather than lump sums."""
 
-    lunch: Decimal = Decimal('0')
-    coffee_break: Decimal = Decimal('0')
-    dinner: Decimal = Decimal('0')
+    lunch: Decimal = Decimal(0)
+    coffee_break: Decimal = Decimal(0)
+    dinner: Decimal = Decimal(0)
 
 
 @dataclass(frozen=True)

@@ -86,9 +86,10 @@ test di regressione: il comportamento è **congelato**, non reinterpretato.
 |---|---|
 | Template email sparsi nelle view | `services/templates.py`: registro unico, 8 template versionati con segnaposto dichiarati |
 | `templates/lettera_invito.docx` | `indico_ecm/templates/letters/lettera_invito.docx` |
-| File della cartella evento (`info_evento.txt`, `briefing.txt`, `agenda.txt`, `report_template.txt`, `email_draft.html`) | `services/templates.py::EVENT_FOLDER_FILES` |
+| File della cartella evento (`info_evento.txt`, `briefing.txt`, `agenda.txt`, `report_template.txt`, `email_draft.html`) | `services/automator.py::FOLDER_TEMPLATES`; l'elenco dei nomi resta in `services/templates.py::EVENT_FOLDER_FILES` e un test impedisce ai due di divergere |
 | `AUTOMATOR_PROMPT` + `automatorResponseSchema` | `services/automator.py`, prompt versionato e con hash |
 | Estrazione dati dall'email | `services/automator.py::extract`, deterministica (codice, date, relatori, specialità) |
+| Caricamento del documento (`automator.js`: incolla o allega, poi scarica lo zip) | Pagina `/admin/ecm/automator`; `read_document` legge txt, Word, PDF, HTML/eml; `build_folder_archive` restituisce lo zip con la cartella già nominata |
 
 ### Agenti che eseguono il workflow
 
@@ -125,21 +126,39 @@ date e nome cartella sono estratti da regole; se il modello ne propone di
 diversi, vince la piattaforma e la divergenza viene registrata come conflitto.
 Il prompt vieta esplicitamente di dichiarare crediti.
 
+**E oggi il modello non serve per costruire la cartella.** L'originale mandava
+tutto a Gemini e riceveva indietro anche i nomi dei file: senza chiave l'intera
+funzione era ferma. Qui l'estrazione è deterministica e i cinque documenti
+iniziali sono modelli compilati con i dati estratti, quindi la pagina funziona
+sempre. Il runtime LLM resta un'aggiunta facoltativa per la prosa, non un
+prerequisito.
+
+**Le espressioni regolari sono state strette, non copiate.** Il pattern originale
+del codice evento accettava anche `[A-Z]{1,3}\d{2,5}`, che pesca `IT12345` da una
+partita IVA, `A101` da una sala e `FT2026` da una fattura: un codice sbagliato
+archivia la richiesta di accreditamento sotto l'evento sbagliato. Ora vale la sola
+convenzione del provider, più tutto ciò che il testo annuncia esplicitamente come
+codice ("codice evento:", "rif."). Il pattern dei relatori si fermava a due parole
+in maiuscolo e trasformava `Prof. Gian Luca De Angelis` in `Gian Luca De`: ora le
+particelle dei cognomi (`de`, `della`, `van`, `von`, `d'`…) fanno parte del nome e
+le parole di ruolo che seguono (`Presidente`, `Moderatore`…) vengono tolte. Ogni
+caso è un test.
+
 **I costi di ospitalità si sommano.** Erano stampati sulla lettera e basta: ora
 `services/costs.py` produce il totale per medico, per evento, e il confronto con
 il budget dello sponsor.
 
-## Da completare
+## Stato del porting
 
-| Funzione | Cosa manca | Priorità |
-|---|---|---|
-| Lettere `.docx` | Il rendering del template Word con `letter_context` (serve `python-docx`) | ⭐⭐⭐ |
-| Import archivio | La UI e la scrittura su database: la trasformazione è pronta e testata | ⭐⭐⭐ |
-| Anagrafica evento | Le viste sopra `EventOperations` e `EventDeliverable` | ⭐⭐⭐ |
-| Stampa unione | Import CSV/XLSX del foglio ospedali verso `InvitationBatch` | ⭐⭐ |
-| Automator | Il runtime LLM che esegue `build_request` e `validate_response` | ⭐⭐ |
-| Brochure e sfondi generati | `generateMedicalBrochure`, `createMedicalBackground`: funzione di generazione immagini, da rivalutare | ⭐ |
-| Voice control | `js/core/voice.js`: mai citato come necessario, non portato | — |
+| Funzione | Stato |
+|---|---|
+| Lettere `.docx` | **Fatto** — `services/letters.py` rende il template Word e la pagina Inviti genera l'archivio |
+| Import archivio | **Fatto** — `/admin/ecm/import`, con le segnalazioni riga per riga |
+| Anagrafica evento e checklist | **Fatto** — panoramica, accreditamento, scadenze con urgenza |
+| Stampa unione | **Fatto** — import CSV/XLSX del foglio ospedali verso `InvitationBatch` |
+| Automator | **Fatto nella parte deterministica** — `/admin/ecm/automator` legge il materiale, estrae, mostra da quale frase, costruisce e scarica la cartella. Resta facoltativo il runtime LLM che esegue `build_request`/`validate_response` per la prosa |
+| Brochure e sfondi generati | Non portato: serve una funzione di generazione immagini, da rivalutare |
+| Voice control | Non portato: `js/core/voice.js` non è mai stato citato come necessario |
 
 ## Cosa non portare, e perché
 
@@ -167,11 +186,15 @@ Ciò che l'app attuale non può fare, e che la migrazione rende possibile:
 5. **Automazioni con memoria**: un agente che riapre la pratica al momento
    giusto perché il task ha una data, non perché qualcuno se ne ricorda.
 
-## Ordine consigliato di migrazione
+## Ordine di adozione in ufficio
+
+Il porting è concluso; questo è l'ordine con cui conviene metterlo in uso, dal
+dato che sblocca tutto il resto all'ultimo passaggio facoltativo.
 
 1. Anagrafica evento + checklist (i dati che già esistono) — **sblocca tutto**.
 2. Import degli eventi storici dal formato attuale.
 3. Lettere e stampa unione: è il lavoro manuale più pesante che si elimina.
 4. Email di accreditamento come azione approvabile.
 5. Promemoria e brief grafico.
-6. Automator, per ultimo: è la parte che richiede il runtime LLM.
+6. Automator: si usa da subito nella parte deterministica; il runtime LLM, se
+   servirà, si collega dopo senza toccare la pagina.

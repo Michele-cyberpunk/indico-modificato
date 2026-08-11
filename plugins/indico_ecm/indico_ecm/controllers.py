@@ -17,6 +17,7 @@ still to do.
 import io
 import json
 from datetime import date
+from operator import itemgetter
 
 from flask import flash, jsonify, redirect, request, session
 from werkzeug.exceptions import Forbidden, NotFound
@@ -40,6 +41,7 @@ from indico_ecm.models.deliverables import EventDeliverable, states_for_event
 from indico_ecm.models.operations import EventOperations, InvitationBatch, SpecialReminder
 from indico_ecm.models.provider import AccreditationState, ActivityFormat, EventAccreditation, Provider
 from indico_ecm.services import attendance as attendance_service
+from indico_ecm.services import automator as automator_service
 from indico_ecm.services import certificate_render, certificates as certificate_service
 from indico_ecm.services import eligibility as eligibility_service
 from indico_ecm.services import invitations as invitation_service
@@ -336,8 +338,6 @@ class RHECMCertificates(RHECMEventBase):
         return redirect(url_for_plugin('ecm.certificates', self.event))
 
 
-
-
 class RHECMCertificateDownload(RHECMEventBase):
     """Re-render and download one certificate.
 
@@ -427,7 +427,7 @@ class RHECMAttendance(RHECMEventBase):
             minutes = sum(interval.minutes for interval in intervals)
             rows.append({'registration': registration, 'minutes': minutes,
                          'intervals': len(intervals), 'open': len(open_rows)})
-        rows.sort(key=lambda row: row['minutes'])
+        rows.sort(key=itemgetter('minutes'))
         return WPECM.render_template('attendance.html', self.event, 'ecm', rows=rows, program=program)
 
 
@@ -491,6 +491,56 @@ class RHECMLegacyImport(RHAdminBase):
         result = import_archive(data)
         return WPECMAdmin.render_template('legacy_import.html', 'ecm_admin', result=result,
                                           folder_path=folder_path)
+
+
+class RHECMAutomator(RHAdminBase):
+    """Paste the sponsor's email, drop in the attachments, get the event folder.
+
+    The extraction is deterministic and says where every value came from; what
+    it could not work out is listed rather than invented. Nothing is created in
+    Indico here: the output is the folder archive the office already files on
+    the shared drive.
+    """
+
+    def _process_GET(self):
+        return WPECMAdmin.render_template('automator.html', 'ecm_admin', extraction=None, form={})
+
+    def _process_POST(self):
+        form = {key: request.form.get(key, '').strip()
+                for key in ('text', 'event_name', 'sponsor', 'place', 'city')}
+        sources = [form['text']] if form['text'] else []
+        unreadable = []
+        for upload in request.files.getlist('documents'):
+            if not upload.filename:
+                continue
+            try:
+                sources.append(automator_service.read_document(upload.read(), upload.filename))
+            except Exception as exc:
+                # a corrupt or unsupported attachment must not lose the other material
+                unreadable.append(f'{upload.filename}: {exc}')
+        if not sources:
+            flash(_('Incolla del testo o carica almeno un documento leggibile.'), 'error')
+            return redirect(url_for_plugin('ecm.automator'))
+
+        for problem in unreadable:
+            flash(problem, 'warning')
+
+        text = '\n\n'.join(sources)
+        extraction = automator_service.extract(text, known_sponsor=form['sponsor'],
+                                               known_location=form['place'] or form['city'])
+        folder = automator_service.folder_name_for(extraction, event_name=form['event_name'],
+                                                   city=form['city'] or form['place'])
+        if request.form.get('download'):
+            _folder, archive = automator_service.build_folder_archive(
+                extraction, event_name=form['event_name'], sponsor=form['sponsor'],
+                place=form['place'], city=form['city'])
+            return send_file(f'{folder or "evento"}.zip', io.BytesIO(archive), 'application/zip',
+                             inline=False)
+        return WPECMAdmin.render_template('automator.html', 'ecm_admin', extraction=extraction,
+                                          folder=folder, form=form, source_length=len(text),
+                                          files=automator_service.build_folder_files(
+                                              extraction, event_name=form['event_name'],
+                                              sponsor=form['sponsor'], place=form['place']))
 
 
 class RHECMProviders(RHAdminBase):

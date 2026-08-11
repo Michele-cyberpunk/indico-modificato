@@ -6,9 +6,10 @@
 from indico.core.plugins import IndicoPluginBlueprint
 
 from indico_ecm.controllers import (RHCertificateVerify, RHECMAccreditation, RHECMAssignmentAction,
-                                    RHECMAttendance, RHECMCertificateDownload, RHECMCertificates, RHECMCheckin,
-                                    RHECMDeliverableToggle, RHECMEvaluate, RHECMEventOverview, RHECMInvitations,
-                                    RHECMLegacyImport, RHECMLetters, RHECMParticipants, RHECMProviders)
+                                    RHECMAttendance, RHECMAutomator, RHECMCertificateDownload,
+                                    RHECMCertificates, RHECMCheckin, RHECMDeliverableToggle, RHECMEvaluate,
+                                    RHECMEventOverview, RHECMInvitations, RHECMLegacyImport, RHECMLetters,
+                                    RHECMParticipants, RHECMProviders)
 
 
 blueprint = IndicoPluginBlueprint('ecm', __name__)
@@ -34,5 +35,6 @@ blueprint.add_url_rule(f'{_event}/invitations/letters', 'letters', RHECMLetters)
 
 blueprint.add_url_rule('/admin/ecm/providers', 'providers', RHECMProviders, methods=('GET', 'POST'))
 blueprint.add_url_rule('/admin/ecm/import', 'legacy_import', RHECMLegacyImport, methods=('GET', 'POST'))
+blueprint.add_url_rule('/admin/ecm/automator', 'automator', RHECMAutomator, methods=('GET', 'POST'))
 
 blueprint.add_url_rule('/ecm/verify/<token>', 'verify_certificate', RHCertificateVerify)

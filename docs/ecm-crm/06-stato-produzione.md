@@ -10,7 +10,9 @@ applicazione avviata, pagine e azioni provate una per una.
 web: creare il dossier di accreditamento, seguire la checklist di preparazione,
 registrare le presenze per sessione, far valutare i crediti dal motore
 deterministico, approvarli, emettere gli attestati in PDF con QR di verifica,
-importare il foglio ospedali e generare le lettere di invito in Word.
+importare il foglio ospedali, generare le lettere di invito in Word e, da
+un'email o dagli allegati dello sponsor, costruire la cartella evento con i suoi
+documenti iniziali.
 
 **Nessun mock.** Ogni strumento autorizzato esiste, ogni azione approvabile ha
 un esecutore reale, e le funzioni che dipendono da un fornitore esterno non
@@ -29,6 +31,7 @@ configurato lo dichiarano invece di inventare dati.
 | **Verifica pubblica** (`/ecm/verify/<token>`) | Pagina aperta a chiunque: numero, crediti, evento accreditato, data, versione regole. Nessun dato personale. Anche in JSON |
 | **Provider** (`/admin/ecm/providers`) | Anagrafica provider e prefisso di numerazione |
 | **Import archivio** (`/admin/ecm/import`) | Analisi dell'esportazione del gestionale precedente con le segnalazioni riga per riga |
+| **Da documento a cartella** (`/admin/ecm/automator`) | Si incolla l'email dello sponsor o si caricano gli allegati (txt, Word, PDF, HTML/eml): la pagina estrae codice, date, relatori, specialità e modalità, dice **da quale frase** ha preso ogni valore, elenca ciò che non ha ricavato, mostra i cinque documenti iniziali e scarica la cartella evento in `.zip` già nominata secondo la convenzione del provider |
 | **CRM** (`/admin/crm/…`) | Contatti con le loro evidenze, aziende, opportunità aperte |
 | **Agenti** (`/admin/agents/`) | Stato della coda, esecuzioni recenti, task falliti, coda di approvazione con Approva/Rifiuta, interruttore generale |
 
@@ -37,15 +40,16 @@ configurato lo dichiarano invece di inventare dati.
 | Verifica | Esito |
 |---|---|
 | `indico db prepare` su database vuoto + `indico db --plugin … upgrade` ×4 | **28 tabelle** create |
-| Avvio di `make_app()` con i quattro plugin | 4 plugin attivi, **16 rotte ECM** più CRM e agenti |
-| Rendering di tutte le pagine con utente autenticato | **15 pagine, tutte 200** |
+| Avvio di `make_app()` con i quattro plugin | 4 plugin attivi, **17 rotte ECM** più CRM e agenti |
+| Rendering di tutte le pagine con utente autenticato | **16 pagine, tutte 200** |
 | Generazione PDF attestato | 12,9 KB, `%PDF`, impronta SHA-256 |
 | Import foglio ospedali + generazione lettere | 2 righe importate, archivio `.zip` da ~60 KB con i `.docx` |
 | Check-in dal banco | presenza registrata, risposta JSON |
 | Pipeline crediti completa | 360/360 minuti dal timetable reale, 9 crediti, attestato numerato, verifica pubblica valida |
 | Coda agenti | dedup, `FOR UPDATE SKIP LOCKED` fra due worker, backoff, recupero del lease di un worker morto |
-| **Suite di integrazione** (`plugins/integration_test.py`) | **31 test** su Indico e PostgreSQL reali |
-| Suite pure (senza database) | **292 test** |
+| Da documento a cartella | email incollata e allegato Word: codice, data, relatori (particelle comprese) e cartella `0915 CARDIO … 0116-GDBO`, zip da 5 documenti scaricato dalla pagina |
+| **Suite di integrazione** (`plugins/integration_test.py`) | **36 test** su Indico e PostgreSQL reali |
+| Suite pure (senza database) | **323 test** |
 | ruff con la configurazione del repository | pulito |
 
 ## Copertura degli strumenti degli agenti
@@ -76,12 +80,20 @@ configurato nelle impostazioni del plugin: nessun dato inventato.
 5. **`event.session_blocks`**: non esiste in Indico, i blocchi stanno sotto le
    sessioni.
 6. **Template admin** che estendevano un layout inesistente.
+7. **Le espressioni regolari dell'automator**, provate su testi veri invece che
+   sull'esempio: il pattern del codice evento pescava `IT12345` da una partita
+   IVA, `A101` da una sala e `FT2026` da una fattura; quello dei relatori
+   troncava `Prof. Gian Luca De Angelis` in `Gian Luca De`. Ora il codice si
+   accetta solo dalla convenzione del provider o quando il testo lo annuncia
+   ("codice evento:", "rif."), le particelle dei cognomi fanno parte del nome e
+   le parole di ruolo che seguono vengono tolte. Ogni caso sbagliato è diventato
+   un test.
 
 ## Cosa resta fuori, per scelta
 
 | Cosa | Perché |
 |---|---|
-| Runtime LLM | Gli agenti oggi sono deterministici e fanno un lavoro utile. `automator.build_request`/`validate_response` sono pronti per quando si vorrà collegare un modello; il prompt è versionato e vieta di dichiarare crediti |
+| Runtime LLM | Gli agenti oggi sono deterministici e fanno un lavoro utile, e anche la pagina «Da documento a cartella» funziona senza modello: estrae con regole e compila i documenti iniziali da modelli. `automator.build_request`/`validate_response` sono pronti per quando si vorrà collegare un modello alla sola prosa; il prompt è versionato e vieta di dichiarare crediti |
 | Sandbox degli agenti | Serve solo quando si attiveranno strumenti di ricerca esterna, oggi disattivati |
 | App mobile di check-in | Il check-in funziona da pagina; un'app userebbe la stessa rotta |
 | Firma digitale degli attestati | Il PDF è verificabile per numero, impronta e QR; la firma PAdES richiede un servizio esterno |
@@ -92,8 +104,9 @@ configurato nelle impostazioni del plugin: nessun dato inventato.
 - **Python 3.12.2+**, PostgreSQL con `unaccent` e `pg_trgm`, Redis.
 - `indico celery worker` **e** `indico celery beat`: senza beat il dispatcher
   degli agenti non parte mai.
-- `python-docx` e `openpyxl` per lettere e fogli; `weasyprint` e `qrcode` sono
-  già dipendenze di Indico.
+- `python-docx` e `openpyxl` per lettere, fogli e allegati Word; `weasyprint`,
+  `qrcode` e `pypdf` — usati per gli attestati e per leggere gli allegati PDF —
+  sono già dipendenze di Indico.
 - Gli agenti restano spenti finché non si attiva l'interruttore nel cruscotto:
   il valore predefinito è `enabled = False`.
 

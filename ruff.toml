@@ -174,6 +174,8 @@ parenthesize-tuple-in-subscript = true
 'indico/migrations/versions/*.py' = ['E501', 'D400']
 # plugin migrations are generated from the models: same rules as core migrations
 'plugins/*/*/migrations/*.py' = ['E501', 'D400', 'F401', 'ISC001']
+# the first docstring line of a plugin class is its displayed name, not a sentence
+'plugins/*/*/plugin.py' = ['D400']
 # the plugin test suites use the same relaxations as the core ones
 'plugins/*_test.py' = ['E221', 'E241', 'E272', 'N802', 'S105', 'S106', 'PLC1901', 'ISC004', 'PT018']
 'plugins/*/*/*_test.py' = ['E221', 'E241', 'E272', 'N802', 'S105', 'S106', 'PLC1901', 'ISC004']

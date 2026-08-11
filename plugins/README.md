@@ -63,8 +63,9 @@ cd plugins/indico_agents && PYTHONPATH=. python -m pytest indico_agents -q -c /d
 `-p no:indico` evita di caricare il plugin pytest di Indico, che richiede
 l'applicazione completa: questi test coprono di proposito solo la logica pura
 (corrispondenza di identità, regole crediti, serializzazione delle regole,
-schema e import dell'archivio legacy, template, costi, promemoria, automator,
-backoff della coda, tabella dei permessi degli agenti), 292 test in tutto.
+schema e import dell'archivio legacy, template, costi, promemoria, automator con
+le sue espressioni regolari e la costruzione della cartella evento, backoff della
+coda, tabella dei permessi degli agenti), 323 test in tutto.
 
 ## Test di integrazione
 
@@ -74,12 +75,14 @@ Con un ambiente Indico e un database di prova:
 INDICO_CONFIG=/percorso/indico.conf pytest plugins/integration_test.py -v
 ```
 
-31 test che coprono ciò che la logica pura non può: presenze calcolate dal
+36 test che coprono ciò che la logica pura non può: presenze calcolate dal
 timetable reale, pipeline crediti fino all'attestato, numerazione concorrente,
 coda con leasing fra due worker, resa di tutte le pagine, import del foglio
-ospedali e generazione delle lettere. Senza `INDICO_CONFIG` vengono saltati.
+ospedali e generazione delle lettere, e la pagina che da un documento costruisce
+la cartella evento. Senza `INDICO_CONFIG` vengono saltati.
 
 ## Cosa serve in più rispetto a Indico
 
-`python-docx` (lettere `.docx`) e `openpyxl` (fogli `.xlsx`). `weasyprint` e
-`qrcode`, usati per gli attestati, sono già dipendenze di Indico.
+`python-docx` (lettere `.docx` e lettura degli allegati Word) e `openpyxl`
+(fogli `.xlsx`). `weasyprint`, `qrcode` e `pypdf`, usati per gli attestati e per
+leggere gli allegati PDF, sono già dipendenze di Indico.

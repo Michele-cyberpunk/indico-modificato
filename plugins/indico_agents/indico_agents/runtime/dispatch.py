@@ -65,7 +65,7 @@ def run_agent_task(self, task_id):
         return
     try:
         run_task(task)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception('task %d failed', task_id)
         queue.fail(task, exc)
         db.session.commit()
