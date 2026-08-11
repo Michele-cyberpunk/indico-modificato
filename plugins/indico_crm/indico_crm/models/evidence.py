@@ -31,7 +31,7 @@ class EvidenceKind(RichIntEnum):
 class Evidence(db.Model):
     """A statement about a CRM record, with its provenance.
 
-    Ported from the evidence ledger of trycompai/crm: nothing an agent asserts
+    The design follows the evidence ledger of trycompai/crm: nothing an agent asserts
     is stored as a bare fact. Every statement carries where it came from, how
     confident it is and which run produced it, and is superseded rather than
     overwritten.

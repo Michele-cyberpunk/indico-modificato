@@ -1,24 +1,44 @@
-# Porting del layer agentico di `trycompai/crm` dentro Indico
+# Lo strato agentico: l'architettura di `trycompai/crm` riscritta in Indico
 
-Obiettivo: **non** affiancare un CRM agentico a Indico, ma portare runtime,
+Obiettivo: **non** affiancare un CRM agentico a Indico, ma avere runtime,
 strumenti, skill, coda e integrazioni dentro Indico, che diventa il gestionale
 ECM con il CRM agentico incorporato.
 
-## Perché il porting è legalmente pulito
+## Che cosa è stato preso, e che cosa no
+
+**Di `trycompai/crm` è stata ripresa l'architettura, non il codice.** Nessun file
+di questo repository contiene righe del progetto originale, e nessuno è quindi
+un'opera derivata: il sorgente è TypeScript su Next.js, Prisma e tRPC, qui c'è
+Python su Flask, SQLAlchemy e Celery. Gli strumenti sono di dominio ECM
+(`verify_eligibility`, `simulate_credits`, `invitation_costs`) e non esistono in
+un CRM per la conformità aziendale; le skill sono prosa scritta per questo
+dominio, di cui quattro nomi di file coincidono con l'originale.
+
+Ciò che è stato ripreso sono le decisioni di disegno, che sono la parte di
+valore: una funzione tipizzata per ogni capacità invece dell'accesso libero al
+database; un unico punto di passaggio dove si consultano i permessi e si scrive
+l'audit; una coda durabile con leasing invece di async in-process; le skill come
+markdown versionato; l'approvazione umana prima di ogni scrittura.
+
+Dove un file riprende un meccanismo, il suo docstring lo dichiara. È
+un'indicazione di provenienza del *disegno*, non del codice.
+
+## Perché la scelta della sorgente è legalmente pulita
 
 | Progetto | Licenza | Conseguenza |
 |---|---|---|
 | `indico/indico` | MIT ✅ | Modificabile, chiudibile, rivendibile |
-| `trycompai/crm` | MIT ✅ | **Codice copiabile e riadattabile senza obblighi** |
+| `trycompai/crm` | MIT ✅ | Anche una copia letterale sarebbe stata lecita, con la nota di copyright originale nei file copiati |
 
-Le due licenze sono compatibili e permissive. È l'unica combinazione della
-ricerca che consente un porting letterale del codice: qualsiasi CRM AGPL
-(Relaticle, Twenty, EspoCRM, Frappe) avrebbe contaminato il gestionale.
-Va mantenuta l'attribuzione del copyright originale nei file derivati.
+Le due licenze sono compatibili e permissive: MIT + MIT era l'unica combinazione
+emersa dalla ricerca che avrebbe permesso anche di copiare, se fosse servito.
+Qualsiasi CRM AGPL (Relaticle, Twenty, EspoCRM, Frappe) avrebbe invece
+contaminato il gestionale.
 
-Resta un solo vincolo tecnico: il codice sorgente è **TypeScript** e Indico è
-**Python**. Non è un copia-incolla, è una riscrittura fedele degli stessi
-meccanismi. Ciò che si porta è l'architettura, che è la parte di valore.
+Non essendo stato copiato nulla, **non scatta alcun obbligo di attribuzione nei
+sorgenti**, e infatti i file portano solo la nota di copyright di questo
+progetto. L'attribuzione a `trycompai/crm` sta dove le è dovuta: nei documenti
+di progetto e nel README, come riconoscimento delle idee.
 
 ---
 

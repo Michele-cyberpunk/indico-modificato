@@ -2,8 +2,8 @@
 
 Dossier di progettazione per trasformare **Indico nel gestionale ECM di un
 provider**, con il CRM e il layer di agenti AI **incorporati** (non affiancati),
-portando dentro Indico i moduli agentici, CRM e di automazione di
-`trycompai/crm`.
+riprendendo dentro Indico l'architettura agentica, CRM e di automazione di
+`trycompai/crm` — riscritta in Python, non copiata.
 
 ## Indice
 
@@ -11,7 +11,7 @@ portando dentro Indico i moduli agentici, CRM e di automazione di
 |---|---|
 | [01-catalogo-repository.md](01-catalogo-repository.md) | Catalogo completo dei CRM e dei progetti adiacenti: licenza, stack, cosa prendere, cosa **non** prendere |
 | [02-mosaico-file.md](02-mosaico-file.md) | Per ogni repository, l'albero dei file da estrarre e la mappa "tessera → destinazione" |
-| [03-agenti-ai.md](03-agenti-ai.md) | ⭐ Porting del layer agentico di `trycompai/crm` dentro Indico: runtime, coda, tool, skill, governance |
+| [03-agenti-ai.md](03-agenti-ai.md) | ⭐ Lo strato agentico: l'architettura di `trycompai/crm` riscritta in Indico — runtime, coda, tool, skill, governance |
 | [04-crm-in-indico.md](04-crm-in-indico.md) | ⭐ CRM nativo dentro Indico: modelli, legami con gli oggetti Indico, segnali di innesto |
 | [05-da-cyberbrain.md](05-da-cyberbrain.md) | Migrazione del gestionale attuale: cosa è stato portato, cosa è cambiato e perché |
 | [06-stato-produzione.md](06-stato-produzione.md) | ⭐ Cosa è verificato su ambiente reale, i bug trovati, cosa manca davvero |
@@ -27,7 +27,7 @@ Indico (questo fork, MIT)
                 │
                 ├── indico_crm          aziende · contatti · HCP · sponsor · opportunità · evidenze
                 ├── indico_ecm          accreditamento · presenze · crediti · attestati · export
-                ├── indico_agents       ⟵ porting di trycompai/crm: coda · tool · skill · approvazioni
+                ├── indico_agents       ⟵ architettura di trycompai/crm, riscritta: coda · tool · skill · approvazioni
                 └── indico_integrations Gmail · Calendar · arricchimento · webinar · pagamenti
 ```
 
@@ -39,17 +39,18 @@ CRM, agenti, coda, skill e integrazioni diventano il suo strato operativo.
 | Progetto | Licenza | Esito |
 |---|---|---|
 | `indico/indico` | MIT ✅ | Base modificabile, chiudibile, rivendibile |
-| `trycompai/crm` | MIT ✅ | **Codice portabile senza obblighi** |
+| `trycompai/crm` | MIT ✅ | Sorgente dell'**architettura** agentica: anche copiarne il codice sarebbe stato lecito, ma non è stato fatto |
 | Relaticle, Twenty, EspoCRM, SuiteCRM, Frappe, CiviCRM, pretix, Documenso | AGPL ✅ | Contaminerebbero il gestionale se integrati nel codice |
 | n8n | Sustainable Use License ✅ | ⛔ Vieta di offrire il prodotto a terzi come servizio |
 
-MIT + MIT è l'unica combinazione emersa dalla ricerca che consente un porting
-letterale. I progetti AGPL restano utili **solo come modelli concettuali**
-(schemi dati, pattern) o come servizi esterni non modificati.
+MIT + MIT è l'unica combinazione emersa dalla ricerca che avrebbe consentito
+anche una copia letterale. I progetti AGPL restano utili **solo come modelli
+concettuali** (schemi dati, pattern) o come servizi esterni non modificati.
 
-Unico costo tecnico del porting: il sorgente è TypeScript, Indico è Python. Si
-riscrivono i meccanismi, non si copiano i file — ed è comunque l'architettura la
-parte di valore.
+In pratica non è stata copiata alcuna riga: il sorgente è TypeScript, Indico è
+Python, e ciò che serviva era comunque l'architettura. Nessun file di questo
+repository è un'opera derivata, e nessuno porta quindi una nota di copyright di
+terzi.
 
 ## Metodo di verifica
 

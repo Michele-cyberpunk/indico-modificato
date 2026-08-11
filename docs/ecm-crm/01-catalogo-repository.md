@@ -5,10 +5,12 @@ Legenda affidabilità: **✅** verificato in questa sessione · **○** indicati
 
 > **Direzione del progetto.** Indico è il gestionale; CRM, agenti e automazioni
 > vivono dentro Indico come plugin. Il catalogo va quindi letto su due colonne:
-> i progetti **MIT** (`indico`, `trycompai/crm`, `indico-plugins`, Krayin) sono
-> sorgenti di **codice portabile**; tutti gli altri (AGPL/GPL/LGPL) sono
-> **riferimenti concettuali** o servizi esterni non modificati. Dettaglio del
-> porting in [03-agenti-ai.md](03-agenti-ai.md) e [04-crm-in-indico.md](04-crm-in-indico.md).
+> dai progetti **MIT** (`indico`, `trycompai/crm`, `indico-plugins`, Krayin) si
+> potrebbe riutilizzare anche il codice; tutti gli altri (AGPL/GPL/LGPL) sono
+> **riferimenti concettuali** o servizi esterni non modificati. Nel risultato
+> l'unico codice di terzi è quello di Indico, che è la base del fork: da
+> `trycompai/crm` è stata ripresa l'architettura agentica e riscritta in Python.
+> Dettaglio in [03-agenti-ai.md](03-agenti-ai.md) e [04-crm-in-indico.md](04-crm-in-indico.md).
 
 ---
 
@@ -17,7 +19,7 @@ Legenda affidabilità: **✅** verificato in questa sessione · **○** indicati
 | # | Repository | Licenza | Stack | Ruolo nel mosaico ECM | Priorità |
 |---|---|---|---|---|---|
 | 1 | `indico/indico` (questo fork) | MIT ✅ | Python/Flask/SQLAlchemy, Postgres, Celery, React | **Motore eventi**: base modificabile senza vincoli | ⭐ fondante |
-| 2 | `trycompai/crm` | MIT ✅ | Next.js + NestJS/tRPC + Prisma + Postgres, runtime agenti "eve" ✅ | **Sorgente del porting agentico**: coda, tool, skill, evidenze, approvazioni | ⭐⭐ fondante |
+| 2 | `trycompai/crm` | MIT ✅ | Next.js + NestJS/tRPC + Prisma + Postgres, runtime agenti "eve" ✅ | **Sorgente dell'architettura agentica** (riscritta, non copiata): coda, tool, skill, evidenze, approvazioni | ⭐⭐ fondante |
 | 2b | `Relaticle/relaticle` | AGPL-3.0 ✅ | Laravel 13, PHP 8.4, Filament 5, Livewire 4, Postgres 17 ✅ | **Modello del CRM** (schema, policy, superficie MCP) — non integrabile nel codice | media (riferimento) |
 | 3 | `twentyhq/twenty` | AGPL-3.0 ⚠️ | NestJS + React + TS, Postgres, Redis ✅ | **Modello dati CRM moderno** + motore workflow | ⭐ alta (come riferimento) |
 | 4 | `espocrm/espocrm` | AGPLv3 ✅ | PHP 8.3–8.5, backend REST + SPA ✅ | **ORM a metadati**: entità/campi/layout definiti in JSON | media |
@@ -155,7 +157,7 @@ da copiare concettualmente.
 
 ---
 
-## 2. `trycompai/crm` — la sorgente del porting agentico (MIT) ⭐⭐
+## 2. `trycompai/crm` — la sorgente dell'architettura agentica (MIT) ⭐⭐
 
 È il repository più prezioso della lista dopo Indico, perché è **MIT** e perché
 risolve il problema che tutti gli altri lasciano aperto: come si fa girare un

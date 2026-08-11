@@ -5,10 +5,13 @@
 
 """The tool registry.
 
-Ported from the tool layer of trycompai/crm, where each capability is one
-explicit, typed function rather than free-form access. Everything an agent can
-do passes through `call`, which is the single place where the permission table
-is consulted and the audit row is written — there is no second path.
+The design follows the tool layer of trycompai/crm — each capability is one
+explicit, typed function rather than free-form access — reimplemented here in
+Python; no code is shared between the two projects.
+
+Everything an agent can do passes through `call`, which is the single place
+where the permission table is consulted and the audit row is written. There is
+no second path.
 """
 
 import time

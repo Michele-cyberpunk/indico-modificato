@@ -33,7 +33,7 @@ class TaskOrigin(RichIntEnum):
 class AgentTask(db.Model):
     """A unit of work for the agent layer.
 
-    Ported from the work queue of trycompai/crm: the queue is a table, not a
+    The design follows the work queue of trycompai/crm: the queue is a table, not a
     broker, because the questions that matter here are "what work exists, why,
     and what happened to it" — and a table answers them years later.
 

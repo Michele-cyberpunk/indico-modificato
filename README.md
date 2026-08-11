@@ -128,9 +128,11 @@ timetable, permessi, autenticazione, sondaggi. Il progetto originale è su
 [docs.getindico.io](https://docs.getindico.io). Questo fork non lo modifica: lo
 estende.
 
-**trycompai/crm** (MIT) ha fornito l'impianto del CRM e dello strato agentico —
-coda di lavoro, strumenti tipizzati, approvazioni umane — riscritto in Python
-sopra i modelli di Indico.
+**trycompai/crm** (MIT) ha fornito l'architettura del CRM e dello strato
+agentico — coda di lavoro durabile, strumenti tipizzati, approvazioni umane —
+**riscritta** in Python sopra i modelli di Indico. Il sorgente è TypeScript su
+Prisma: nessuna riga è condivisa fra i due progetti e nessun file qui è
+un'opera derivata. Ciò che è stato ripreso sono le decisioni di disegno.
 
 **Il gestionale interno del provider** ha fornito il capitolato vero: la
 convenzione dei nomi cartella, le 17 voci di checklist, le lettere di invito, i

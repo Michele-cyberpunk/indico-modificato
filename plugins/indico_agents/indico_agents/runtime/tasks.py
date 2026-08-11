@@ -5,10 +5,13 @@
 
 """The work queue.
 
-Ported from `lib/tasks.ts` of trycompai/crm. The mechanism is the same one, in
-SQLAlchemy: due rows are claimed with `FOR UPDATE SKIP LOCKED`, so several
-workers can drain the queue concurrently without coordination, and a worker that
-dies only holds its rows until the lease expires.
+The design follows `lib/tasks.ts` of trycompai/crm — a durable table rather than
+in-process async — reimplemented here in SQLAlchemy; no code is shared between
+the two projects.
+
+Due rows are claimed with `FOR UPDATE SKIP LOCKED`, so several workers can drain
+the queue concurrently without coordination, and a worker that dies only holds
+its rows until the lease expires.
 
 Nothing in this module talks to a language model. It is the plumbing that makes
 agent work restartable, and it is deliberately usable on its own.

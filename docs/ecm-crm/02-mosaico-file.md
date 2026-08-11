@@ -455,16 +455,17 @@ frappe/crm/
 
 ## Tessera M — Runtime agentico · `trycompai/crm` (MIT) ✅ — inventario reale
 
-Struttura verificata file per file (ramo `main`). È la tessera che si porta
-davvero dentro Indico: dettaglio completo del porting in
-[03-agenti-ai.md](03-agenti-ai.md).
+Struttura verificata file per file (ramo `main`). È la tessera da cui viene
+l'architettura dello strato agentico: i marcatori qui sotto indicano che cosa ha
+fatto da **modello**, non file da copiare — nel risultato nulla è stato copiato,
+tutto riscritto in Python. Dettaglio in [03-agenti-ai.md](03-agenti-ai.md).
 
 ```text
 crm/apps/agent/
 ├── agent/
 │   ├── agent.ts                [MODELLO] ← definizione dell'agente
-│   ├── instructions.md         [RIUSA]   ← prosa di sistema, adattabile
-│   ├── instructions/           [RIUSA]
+│   ├── instructions.md         [MODELLO] ← prosa di sistema; qui riscritta per l'ECM
+│   ├── instructions/           [MODELLO]
 │   ├── tools/                  [MODELLO] ⭐⭐ 27 tool, uno per file
 │   │   ├── read_crm_history.ts · read_company_history.ts · read_deal_history.ts
 │   │   ├── search_crm.ts · identify_contact.ts · list_deals.ts
@@ -476,7 +477,7 @@ crm/apps/agent/
 │   │   ├── get_contact_work_history.ts · fetch_contact_photo.ts
 │   │   ├── schedule_recheck.ts · write_brief.ts · write_workspace_profile.ts
 │   │   └── set_chat_title.ts · agent.ts
-│   ├── skills/                 [RIUSA]   ⭐⭐ prosa versionata, portabile quasi invariata
+│   ├── skills/                 [MODELLO] ⭐⭐ l'idea della skill come prosa versionata
 │   │   ├── evidence.md · identity-matching.md
 │   │   └── data-boundaries.md · writing-a-brief.md
 │   ├── schedules/dispatch.ts   [MODELLO] ⭐⭐⭐ dispatcher dei task scaduti
@@ -575,7 +576,7 @@ indico-ecm/                                  ← questo repository (fork MIT)
     │   ├── permissions.py · signals.py · tasks.py     ⟵ A core
     │   └── api/ · controllers/ · client/ · migrations/
     │
-    ├── indico_agents/                       ← LAYER AGENTICO  ⟵ M (porting)
+    ├── indico_agents/                       ← LAYER AGENTICO  ⟵ M (riscritto)
     │   ├── runtime/
     │   │   ├── tasks.py · leases.py         ⟵ M lib/tasks.ts (claimDue)      ⭐⭐⭐
     │   │   ├── dispatch.py                  ⟵ M schedules/dispatch.ts        ⭐⭐⭐
@@ -627,7 +628,7 @@ indico-ecm/                                  ← questo repository (fork MIT)
 | Origine | Quota stimata del sistema finale |
 |---|---|
 | Indico riusato direttamente (MIT) | ~45% |
-| Porting da `trycompai/crm` (MIT) — runtime, tool, skill, governance | ~15% |
+| Architettura di `trycompai/crm` (MIT) riscritta in Python — runtime, tool, skill, governance | ~15% |
 | Pattern reimplementati da progetti AGPL/GPL (solo idee: modelli dati, presenze, campagne) | ~10% |
 | **Codice ECM e CRM proprietario nuovo** | **~30%** |
 
@@ -639,8 +640,11 @@ i tool ECM degli agenti. Il resto è infrastruttura che conviene non riscrivere.
 
 Nel mosaico ci sono due categorie di tessere che non vanno mescolate:
 
-- **Porting di codice** — solo da progetti MIT: Indico, `trycompai/crm`,
-  `indico-plugins`, Krayin. Si copia, si adatta, si mantiene l'attribuzione.
+- **Codice riutilizzabile** — solo da progetti MIT: Indico, `trycompai/crm`,
+  `indico-plugins`, Krayin. Copiare sarebbe lecito, purché si mantenga la nota
+  di copyright originale nei file copiati. *In concreto l'unico codice
+  riutilizzato è quello di Indico, che è la base del fork: da `trycompai/crm` è
+  stata ripresa l'architettura e riscritta in Python, da Krayin nulla.*
 - **Riferimento concettuale** — da progetti AGPL/GPL: Relaticle, Twenty,
   EspoCRM, SuiteCRM, Frappe, CiviCRM, Mautic, pretix, alf.io, Documenso,
   Chatwoot, Odoo. Si studiano gli schemi e i comportamenti, si riscrive
