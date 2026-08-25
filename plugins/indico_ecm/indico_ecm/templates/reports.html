@@ -1,0 +1,109 @@
+{% extends 'layout/admin_page.html' %}
+{% from 'ecm:_macros.html' import admin_nav %}
+
+{% block title %}Report e statistiche{% endblock %}
+
+{% block content %}
+    {{ admin_nav('ecm.reports') }}
+
+    <div class="toolbar space-after">
+        <div class="group">
+            <a class="i-button" href="{{ url_for_plugin('ecm.reports', format='xlsx') }}">
+                Esporta in Excel
+            </a>
+        </div>
+    </div>
+
+    {% if not report.totals.events %}
+        <div class="info-message-box">
+            <span class="icon"></span>
+            <div class="message-text">
+                Nessun evento accreditato ancora. Il report conta gli eventi che hanno un dossier
+                di accreditamento.
+            </div>
+        </div>
+    {% else %}
+        <table class="i-table-widget">
+            <tbody>
+                <tr><td>Eventi accreditati</td><td>{{ report.totals.events }}</td></tr>
+                <tr><td>Partecipanti previsti</td><td>{{ report.totals.participants }}</td></tr>
+                <tr><td>Crediti</td><td>{{ report.totals.credits }}</td></tr>
+                <tr><td>Attestati emessi</td><td>{{ report.totals.certificates }}</td></tr>
+                <tr>
+                    <td>Completamento medio della checklist</td>
+                    <td>{{ report.totals.completion_rate }}%</td>
+                </tr>
+                <tr>
+                    <td>Eventi con voci in ritardo</td>
+                    <td>
+                        {% if report.totals.at_risk %}
+                            <span class="i-label danger small">{{ report.totals.at_risk }}</span>
+                        {% else %}
+                            <span class="i-label accept small">nessuno</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        {% if report.at_risk %}
+            <h3>Da chiamare</h3>
+            <div class="i-callout">
+                Ordinati per quante voci di checklist sono scadute o in ritardo. È la lista per cui
+                il cruscotto esisteva.
+            </div>
+            <table class="i-table-widget">
+                <thead>
+                    <tr><th>Evento</th><th>Voci in ritardo</th><th>Data</th><th>Città</th></tr>
+                </thead>
+                <tbody>
+                    {% for event in report.at_risk %}
+                        <tr>
+                            <td><a href="{{ url_for_plugin('ecm.event_overview', event_id=event.id) }}">{{ event.title }}</a></td>
+                            <td><span class="i-label danger small">{{ event.late }}</span></td>
+                            <td>{{ event.day.strftime('%d/%m/%Y') if event.day else '—' }}</td>
+                            <td>{{ event.city or '—' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+
+        <h3>Per città</h3>
+        <table class="i-table-widget">
+            <thead>
+                <tr><th>Città</th><th>Eventi</th><th>Quota</th><th>Partecipanti</th><th>Crediti</th><th>Completamento</th></tr>
+            </thead>
+            <tbody>
+                {% for bucket in report.by_city %}
+                    <tr>
+                        <td>{{ bucket.key }}</td>
+                        <td>{{ bucket.events }}</td>
+                        <td>{{ bucket.share }}%</td>
+                        <td>{{ bucket.participants }}</td>
+                        <td>{{ bucket.credits }}</td>
+                        <td>{{ bucket.completion_rate }}%</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h3>Per mese</h3>
+        <table class="i-table-widget">
+            <thead>
+                <tr><th>Mese</th><th>Eventi</th><th>Partecipanti</th><th>Crediti</th><th>Completamento</th></tr>
+            </thead>
+            <tbody>
+                {% for bucket in report.by_month %}
+                    <tr>
+                        <td>{{ bucket.key }}</td>
+                        <td>{{ bucket.events }}</td>
+                        <td>{{ bucket.participants }}</td>
+                        <td>{{ bucket.credits }}</td>
+                        <td>{{ bucket.completion_rate }}%</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}
