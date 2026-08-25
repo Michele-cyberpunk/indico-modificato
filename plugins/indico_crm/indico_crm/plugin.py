@@ -49,6 +49,9 @@ class CRMPlugin(IndicoPlugin):
         self.connect(signals.event.registration_state_updated, crm_signals.registration_state_updated)
         self.connect(signals.event.registration_checkin_updated, crm_signals.registration_checkin_updated)
         self.connect(signals.event.created, crm_signals.event_created)
+        # Without this the faculty never reached the CRM: the handler existed
+        # and was documented, but nothing was ever connected to it.
+        self.connect(signals.event.person_updated, crm_signals.event_person_updated)
         self.connect(signals.menu.items, self._extend_admin_menu, sender='admin-sidemenu')
 
     def get_blueprints(self):

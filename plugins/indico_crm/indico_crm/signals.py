@@ -14,7 +14,8 @@ from indico.core.db import db
 
 from indico_crm.models.contacts import Contact, ContactSource
 from indico_crm.models.links import CRMObjectType, IndicoObjectType, LinkSource, ObjectLink
-from indico_crm.services.identity import candidate_from_contact, create_contact, find_matches
+from indico_crm.services.identity import (candidate_from_contact, create_contact, find_matches,
+                                          find_or_create_company)
 from indico_crm.services.identity_rules import IdentityCandidate
 from indico_crm.util import enqueue_agent_task
 
@@ -39,6 +40,21 @@ def _candidate_from_registration(registration):
     )
 
 
+def _company_for(registration):
+    """The organization the registrant declared, when the plugin is set to keep them.
+
+    The affiliation is a personal-data field of the registration form: it is
+    only there when the form asks for it.
+    """
+    from indico_crm.plugin import CRMPlugin
+
+    if not CRMPlugin.settings.get('autocreate_companies'):
+        return None
+    affiliation = (registration.get_personal_data().get('affiliation') or '').strip()
+    company = find_or_create_company(affiliation)
+    return company.id if company else None
+
+
 def registration_created(registration, **kwargs):
     """Link the registrant to a contact, or ask an agent to sort it out.
 
@@ -46,11 +62,17 @@ def registration_created(registration, **kwargs):
     guessed: it becomes a task, because the contact it would create may end up
     on a certificate.
     """
+    from indico_crm.plugin import CRMPlugin
+
+    if not CRMPlugin.settings.get('autolink_registrations'):
+        return
+
     candidate = _candidate_from_registration(registration)
     if registration.user is not None:
         contact = Contact.query.filter_by(user_id=registration.user.id, is_deleted=False).first()
         if contact is None:
-            contact = create_contact(candidate, source=ContactSource.registration)
+            contact = create_contact(candidate, source=ContactSource.registration,
+                                     company_id=_company_for(registration))
             contact.user_id = registration.user.id
         _link(contact, IndicoObjectType.registration, registration.id, 'participant')
         _link(contact, IndicoObjectType.event, registration.event_id, 'participant')

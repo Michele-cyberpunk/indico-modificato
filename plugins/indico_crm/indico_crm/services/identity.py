@@ -83,6 +83,29 @@ def resolve_or_propose(candidate, *, healthcare=False, source=ContactSource.manu
     return None, (matches[0][1] if matches else None)
 
 
+def find_or_create_company(name, *, kind=None):
+    """The organization someone belongs to, matched by name or created.
+
+    Matched case-insensitively on the name, because an affiliation is typed by
+    the registrant and `A.O.U. Careggi` and `A.O.U. CAREGGI` are one hospital.
+    Nothing here ever reaches a certificate: it is relational data.
+    """
+    from indico_crm.models.companies import Company, CompanyKind
+
+    name = (name or '').strip()
+    if not name:
+        return None
+    existing = (Company.query
+                .filter(func.lower(Company.name) == name.lower(), ~Company.is_deleted)
+                .first())
+    if existing:
+        return existing
+    company = Company(name=name, kind=kind or CompanyKind.healthcare_org)
+    db.session.add(company)
+    db.session.flush()
+    return company
+
+
 def create_contact(candidate, *, source=ContactSource.manual, company_id=None):
     """Create a contact from a candidate.
 

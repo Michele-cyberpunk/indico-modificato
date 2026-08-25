@@ -128,8 +128,56 @@ def import_rows(event, rows, *, replace=False):
         db.session.add(row)
         created.append(row)
     db.session.flush()
+    record_organizations(created, event=event)
     logger.info('imported %d invitation rows for event %d (%d issues)', len(created), event.id, len(issues))
     return created, issues
+
+
+def record_organizations(rows, *, event=None):
+    """Put the hospitals and the sponsor of a mail merge into the CRM.
+
+    These are the organizations the provider actually works with — the sheet is
+    where their names arrive — and the CRM already has the two kinds they belong
+    to. Without this they stayed on the invitation rows and the companies page
+    was empty.
+
+    Only the names are recorded, and the recipient is not turned into a contact:
+    a person who ends up on a certificate is created deliberately, not as a side
+    effect of importing a spreadsheet.
+    """
+    try:
+        from indico_crm.models.companies import CompanyKind
+        from indico_crm.models.links import CRMObjectType, IndicoObjectType, LinkSource, ObjectLink
+        from indico_crm.plugin import CRMPlugin
+        from indico_crm.services.identity import find_or_create_company
+    except ImportError:
+        # The CRM plugin is not installed: the invitations still work.
+        return []
+
+    if not CRMPlugin.settings.get('autocreate_companies'):
+        return []
+
+    recorded = []
+    for row in rows:
+        for name, kind in ((row.hospital, CompanyKind.healthcare_org),
+                           (row.sponsor, CompanyKind.sponsor)):
+            company = find_or_create_company(name, kind=kind)
+            if company is None:
+                continue
+            recorded.append(company)
+            if event is None:
+                continue
+            existing = ObjectLink.query.filter_by(
+                crm_type=CRMObjectType.company, crm_id=company.id,
+                indico_type=IndicoObjectType.event, indico_id=event.id,
+                relation=kind.name).first()
+            if existing is None:
+                db.session.add(ObjectLink(
+                    crm_type=CRMObjectType.company, crm_id=company.id,
+                    indico_type=IndicoObjectType.event, indico_id=event.id,
+                    relation=kind.name, source=LinkSource.import_))
+    db.session.flush()
+    return recorded
 
 
 def row_to_invitation(row, *, event=None):
