@@ -1,5 +1,9 @@
 {% extends 'layout/admin_page.html' %}
 
+{% macro crm_csrf() -%}
+    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+{%- endmacro %}
+
 {% block title %}{% trans %}Contatti{% endtrans %}{% endblock %}
 
 {% block content %}
@@ -31,7 +35,20 @@
                         {% endif %}
                     </td>
                 </tr>
+            {% else %}
+                <tr><td colspan="4">{% trans %}Nessun contatto.{% endtrans %}</td></tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <h3>{% trans %}Nuovo contatto{% endtrans %}</h3>
+    <form method="POST">
+        {{ crm_csrf() }}
+        <input name="first_name" placeholder="{% trans %}Nome{% endtrans %}">
+        <input name="last_name" placeholder="{% trans %}Cognome{% endtrans %}" required>
+        <input name="email" type="email" placeholder="{% trans %}Email{% endtrans %}">
+        <input name="phone" placeholder="{% trans %}Telefono{% endtrans %}">
+        <input name="job_title" placeholder="{% trans %}Ruolo{% endtrans %}">
+        <button class="i-button highlight" type="submit">{% trans %}Crea{% endtrans %}</button>
+    </form>
 {% endblock %}

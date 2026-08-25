@@ -3,6 +3,12 @@
 {% block title %}{% trans %}Opportunità{% endtrans %}{% endblock %}
 
 {% block content %}
+    <p>
+        <a class="i-button {{ 'highlight' if open_only }}" href="{{ url_for_plugin('crm.opportunities', open_only=1) }}">
+            {% trans %}Aperte{% endtrans %}</a>
+        <a class="i-button {{ 'highlight' if not open_only }}" href="{{ url_for_plugin('crm.opportunities') }}">
+            {% trans %}Tutte{% endtrans %}</a>
+    </p>
     <table class="i-table-widget">
         <thead>
             <tr>
@@ -18,13 +24,36 @@
             {% for opportunity in opportunities %}
                 <tr>
                     <td>{{ opportunity.title }}</td>
-                    <td>{{ opportunity.company.name }}</td>
+                    <td><a href="{{ url_for_plugin('crm.company_details', company_id=opportunity.company.id) }}">
+                        {{ opportunity.company.name }}</a></td>
                     <td>{{ opportunity.event.title if opportunity.event else '' }}</td>
                     <td>{{ opportunity.stage.title }}</td>
                     <td>{{ opportunity.value }} {{ opportunity.currency }}</td>
                     <td>{{ opportunity.next_action }}</td>
                 </tr>
+            {% else %}
+                <tr><td colspan="6">{% trans %}Nessuna opportunità.{% endtrans %}</td></tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <h3>{% trans %}Nuova opportunità{% endtrans %}</h3>
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+        <input name="title" placeholder="{% trans %}Titolo{% endtrans %}" required>
+        <select name="company_id" required>
+            <option value="">— {% trans %}azienda{% endtrans %} —</option>
+            {% for company in all_companies %}
+                <option value="{{ company.id }}">{{ company.name }}</option>
+            {% endfor %}
+        </select>
+        <select name="stage">
+            {% for name, title in opportunity_stages %}
+                <option value="{{ name }}">{{ title }}</option>
+            {% endfor %}
+        </select>
+        <input name="value" type="number" step="0.01" min="0" placeholder="{% trans %}Valore €{% endtrans %}">
+        <input name="next_action" placeholder="{% trans %}Prossima azione{% endtrans %}">
+        <button class="i-button highlight" type="submit">{% trans %}Crea{% endtrans %}</button>
+    </form>
 {% endblock %}

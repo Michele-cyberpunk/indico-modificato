@@ -14,11 +14,26 @@
         <tbody>
             {% for company in companies %}
                 <tr>
-                    <td>{{ company.name }}</td>
+                    <td><a href="{{ url_for_plugin('crm.company_details', company_id=company.id) }}">{{ company.name }}</a></td>
                     <td>{{ company.kind.title }}</td>
                     <td>{{ company.vat_id or '' }}</td>
                 </tr>
+            {% else %}
+                <tr><td colspan="3">{% trans %}Nessuna azienda.{% endtrans %}</td></tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <h3>{% trans %}Nuova azienda{% endtrans %}</h3>
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+        <input name="name" placeholder="{% trans %}Ragione sociale{% endtrans %}" required>
+        <select name="kind">
+            {% for name, title in company_kinds %}
+                <option value="{{ name }}" {{ 'selected' if name == 'healthcare_org' }}>{{ title }}</option>
+            {% endfor %}
+        </select>
+        <input name="vat_id" placeholder="{% trans %}P. IVA{% endtrans %}">
+        <button class="i-button highlight" type="submit">{% trans %}Crea{% endtrans %}</button>
+    </form>
 {% endblock %}

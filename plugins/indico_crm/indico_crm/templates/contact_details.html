@@ -4,6 +4,93 @@
 
 {% block content %}
     <section>
+        <h3>{{ contact.full_name }}</h3>
+        <table class="i-table-widget">
+            <tbody>
+                <tr><th>{% trans %}Email{% endtrans %}</th><td>{{ contact.email }}</td></tr>
+                <tr><th>{% trans %}Telefono{% endtrans %}</th><td>{{ contact.phone }}</td></tr>
+                <tr><th>{% trans %}Ruolo{% endtrans %}</th><td>{{ contact.job_title }}</td></tr>
+                <tr><th>{% trans %}Azienda{% endtrans %}</th>
+                    <td>{% if contact.company %}
+                        <a href="{{ url_for_plugin('crm.company_details', company_id=contact.company.id) }}">
+                            {{ contact.company.name }}</a>
+                    {% endif %}</td></tr>
+                {% if contact.hcp_profile %}
+                    <tr><th>ECM</th>
+                        <td>{{ contact.hcp_profile.profession }} — {{ contact.hcp_profile.discipline }}
+                            ({{ contact.hcp_profile.tax_code }})</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        <h4>{% trans %}Modifica{% endtrans %}</h4>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+            <input type="hidden" name="action" value="edit">
+            <input name="first_name" value="{{ contact.first_name }}" placeholder="{% trans %}Nome{% endtrans %}">
+            <input name="last_name" value="{{ contact.last_name }}" placeholder="{% trans %}Cognome{% endtrans %}" required>
+            <input name="email" value="{{ contact.email }}" placeholder="{% trans %}Email{% endtrans %}">
+            <input name="phone" value="{{ contact.phone }}" placeholder="{% trans %}Telefono{% endtrans %}">
+            <input name="job_title" value="{{ contact.job_title }}" placeholder="{% trans %}Ruolo{% endtrans %}">
+            <button class="i-button highlight" type="submit">{% trans %}Salva{% endtrans %}</button>
+        </form>
+    </section>
+
+    <section>
+        <h3>{% trans %}Timeline{% endtrans %}</h3>
+        <ul>
+            {% for entry in timeline %}
+                <li>
+                    {{ entry.when.strftime('%d/%m/%Y %H:%M') if entry.when else '—' }}
+                    — <strong>{{ entry.kind }}</strong> {{ entry.text }}
+                    {% if entry.status %}<em>({{ entry.status }})</em>{% endif %}
+                </li>
+            {% else %}
+                <li>{% trans %}Nessuna attività.{% endtrans %}</li>
+            {% endfor %}
+        </ul>
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+            <input type="hidden" name="action" value="note">
+            <input name="note" placeholder="{% trans %}Aggiungi una nota…{% endtrans %}" required>
+            <button class="i-button" type="submit">{% trans %}Registra{% endtrans %}</button>
+        </form>
+    </section>
+
+    <section>
+        <h3>{% trans %}Collegamenti a Indico{% endtrans %}</h3>
+        <ul>
+            {% for link in links %}
+                <li>{{ link.indico_type.title }} #{{ link.indico_id }} — {{ link.relation }}
+                    {% if link.source.name == 'agent' %}<em>{% trans %}agente{% endtrans %}</em>{% endif %}
+                </li>
+            {% else %}
+                <li>{% trans %}Nessun collegamento.{% endtrans %}</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section>
+        <h3>{% trans %}Consensi{% endtrans %}</h3>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+            <input type="hidden" name="action" value="consent">
+            <select name="consent_kind">
+                {% for name, title in consent_kinds %}
+                    <option value="{{ name }}">{{ title }}</option>
+                {% endfor %}
+            </select>
+            <select name="granted">
+                <option value="yes">{% trans %}concesso{% endtrans %}</option>
+                <option value="no">{% trans %}revocato{% endtrans %}</option>
+            </select>
+            <input name="source" placeholder="{% trans %}Fonte (modulo, telefono…){% endtrans %}">
+            <button class="i-button" type="submit">{% trans %}Registra{% endtrans %}</button>
+        </form>
+    </section>
+
+    <section>
         <h3>{% trans %}Evidenze correnti{% endtrans %}</h3>
         <ul>
             {% for entry in evidence %}

@@ -1,0 +1,53 @@
+{% extends 'layout/admin_page.html' %}
+
+{% block title %}{{ company.name }}{% endblock %}
+
+{% block content %}
+    <section>
+        <h3>{{ company.name }}</h3>
+        <table class="i-table-widget">
+            <tbody>
+                <tr><th>{% trans %}Tipo{% endtrans %}</th><td>{{ company.kind.title }}</td></tr>
+                <tr><th>{% trans %}P. IVA{% endtrans %}</th><td>{{ company.vat_id or '' }}</td></tr>
+                {% if company.tax_code %}
+                    <tr><th>{% trans %}Codice fiscale{% endtrans %}</th><td>{{ company.tax_code }}</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h3>{% trans %}Contatti{% endtrans %}</h3>
+        <ul>
+            {% for contact in contacts %}
+                <li><a href="{{ url_for_plugin('crm.contact_details', contact_id=contact.id) }}">
+                    {{ contact.full_name }}</a> {{ contact.job_title }}</li>
+            {% else %}
+                <li>{% trans %}Nessun contatto.{% endtrans %}</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section>
+        <h3>{% trans %}Opportunità{% endtrans %}</h3>
+        <ul>
+            {% for opportunity in opportunities %}
+                <li>{{ opportunity.stage.title }} — {{ opportunity.title }}
+                    ({{ opportunity.value }} {{ opportunity.currency }})</li>
+            {% else %}
+                <li>{% trans %}Nessuna opportunità.{% endtrans %}</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section>
+        <h3>{% trans %}Eventi collegati{% endtrans %}</h3>
+        <ul>
+            {% for event in events %}
+                <li><a href="{{ url_for_plugin('ecm.event_overview', event_id=event.id) }}">{{ event.title }}</a></li>
+            {% else %}
+                <li>{% trans %}Nessun evento collegato.{% endtrans %}</li>
+            {% endfor %}
+        </ul>
+    </section>
+{% endblock %}
