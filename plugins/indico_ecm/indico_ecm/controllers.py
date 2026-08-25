@@ -499,6 +499,8 @@ class RHECMMessages(RHECMEventBase):
             'sponsor': self._sponsor(),
             'services': self._hotel_services_html(),
         }
+
+    def _process_GET(self):
         context = self._context()
         wanted = request.args.get('draft')
         if wanted:
