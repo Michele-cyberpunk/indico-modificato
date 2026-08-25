@@ -406,7 +406,8 @@ def csrf(client, scenario):
 
 
 @pytest.mark.parametrize('path', (
-    '/', '/accreditation', '/attendance', '/participants', '/certificates', '/invitations', '/guests',
+    '/', '/accreditation', '/attendance', '/participants', '/certificates', '/invitations', '/faculty',
+    '/messages', '/guests',
 ))
 def test_event_pages_render(client, scenario, path):
     response = client.get(f'/event/{scenario["event"].id}/manage/ecm{path}')
@@ -414,11 +415,26 @@ def test_event_pages_render(client, scenario, path):
 
 
 @pytest.mark.parametrize('path', (
-    '/admin/ecm/providers', '/admin/ecm/import', '/admin/ecm/automator', '/admin/crm/contacts',
+    '/admin/ecm/providers', '/admin/ecm/reports', '/admin/ecm/export', '/admin/ecm/import',
+    '/admin/ecm/automator',
+    '/admin/crm/contacts',
     '/admin/crm/companies', '/admin/crm/opportunities', '/admin/agents/',
 ))
 def test_admin_pages_render(client, path):
     assert client.get(path).status_code == 200
+
+
+def test_a_company_details_page_renders(client, admin_csrf, unique):
+    # the scratch database has no company with a fixed id: the page is
+    # exercised on one created here, which is also what the office does.
+    from indico.core.db import db
+
+    from indico_crm.models.companies import Company, CompanyKind
+
+    company = Company(name=f'Dettaglio {unique}', kind=CompanyKind.sponsor)
+    db.session.add(company)
+    db.session.commit()
+    assert client.get(f'/admin/crm/companies/{company.id}').status_code == 200
 
 
 # --- from a document to an event folder ---------------------------------------
@@ -629,3 +645,234 @@ def test_checking_in_records_attendance(client, csrf, scenario):
     assert response.status_code == 200
     after = SessionAttendance.query.filter_by(registration_id=scenario['registration'].id).count()
     assert after == before + 1
+
+
+# --- what reaches the CRM ------------------------------------------------------
+
+def test_a_company_is_created_once_and_matched_case_insensitively(context, unique):
+    from indico.core.db import db
+
+    from indico_crm.models.companies import Company, CompanyKind
+    from indico_crm.services.identity import find_or_create_company
+
+    name = f'A.O.U. Careggi {unique}'
+    first = find_or_create_company(name)
+    db.session.flush()
+    again = find_or_create_company(name.upper())
+
+    assert first is not None
+    assert again.id == first.id
+    assert first.kind == CompanyKind.healthcare_org
+    assert Company.query.filter(Company.name.ilike(name)).count() == 1
+
+
+def test_an_empty_affiliation_creates_no_company(context):
+    from indico_crm.services.identity import find_or_create_company
+
+    assert find_or_create_company('') is None
+    assert find_or_create_company('   ') is None
+    assert find_or_create_company(None) is None
+
+
+def test_the_faculty_signal_is_connected(app):
+    # The handler was written and documented but nothing was connected to it,
+    # so the faculty never reached the CRM.
+    from indico.core import signals
+
+    assert signals.event.person_updated.receivers
+
+
+def test_the_hotel_brief_is_deduced_from_the_programme(context, scenario):
+    """The timetable decides what the hotel has to prepare."""
+    from indico.core.db import db
+
+    from indico.modules.events.sessions.models.blocks import SessionBlock
+    from indico.modules.events.sessions.models.sessions import Session
+    from indico.modules.events.timetable.models.entries import TimetableEntry, TimetableEntryType
+
+    event = scenario['event']
+    session_obj = Session(event=event, title='Sessione pomeriggio')
+    db.session.add(session_obj)
+    db.session.commit()
+    block = SessionBlock(session=session_obj, title='Tavola rotonda: light lunch',
+                         duration=timedelta(hours=3))
+    db.session.add(block)
+    db.session.commit()
+    db.session.add(TimetableEntry(event=event, session_block=block,
+                                  type=TimetableEntryType.SESSION_BLOCK,
+                                  start_dt=event.start_dt))
+    db.session.commit()
+
+    # call through the registry so what is tested is exactly what an agent calls
+    from indico_agents.tools.base import _REGISTRY
+
+    result = _REGISTRY['prepare_hotel_brief'].func(context=None, event_id=event.id)
+    assert result['found']
+    lines = '\n'.join(result['services'])
+    assert 'Tavoli riuniti' in lines          # a round table needs tables, not rows
+    assert 'Pranzo' in lines                  # the light lunch is catering too
+    assert 'Richiesta disponibilità' in result['message']['subject']
+
+
+def test_the_messages_page_carries_the_hotel_brief(client, scenario):
+    response = client.get(f'/event/{scenario["event"].id}/manage/ecm/messages')
+    body = response.data.decode()
+    assert response.status_code == 200
+    assert 'Allestimento sala' in body       # the brief is rendered in the hotel quote
+
+
+def test_the_hospital_sheet_populates_the_companies(context, scenario, unique):
+    """The mail merge is where the provider's organizations arrive."""
+    from indico.core.db import db
+
+    from indico_crm.models.companies import Company, CompanyKind
+    from indico_crm.models.links import CRMObjectType, IndicoObjectType, ObjectLink
+    from indico_ecm.services.invitations import import_rows
+
+    hospital = f'A.O.U. Careggi {unique}'
+    sponsor = f'Farmaceutica {unique}'
+    created, issues = import_rows(scenario['event'], [{
+        'nomeOspedale': hospital,
+        'destinatario': 'Direttore Sanitario',
+        'numeroMedici': '3',
+        'sponsor': sponsor,
+    }])
+    db.session.flush()
+
+    assert not issues
+    assert len(created) == 1
+
+    company = Company.query.filter_by(name=hospital).one()
+    assert company.kind == CompanyKind.healthcare_org
+    assert Company.query.filter_by(name=sponsor).one().kind == CompanyKind.sponsor
+
+    link = ObjectLink.query.filter_by(crm_type=CRMObjectType.company, crm_id=company.id,
+                                      indico_type=IndicoObjectType.event,
+                                      indico_id=scenario['event'].id).one()
+    assert link.relation == 'healthcare_org'
+
+
+def test_importing_the_same_sheet_twice_does_not_duplicate_the_companies(context, scenario, unique):
+    from indico.core.db import db
+
+    from indico_crm.models.companies import Company
+    from indico_ecm.services.invitations import import_rows
+
+    hospital = f'Policlinico {unique}'
+    row = {'nomeOspedale': hospital, 'destinatario': 'Primario', 'numeroMedici': '2'}
+    import_rows(scenario['event'], [row])
+    import_rows(scenario['event'], [row])
+    db.session.flush()
+
+    assert Company.query.filter_by(name=hospital).count() == 1
+
+
+# --- the CRM pages --------------------------------------------------------------
+
+@pytest.fixture
+def admin_csrf(client):
+    page = client.get('/admin/crm/contacts')
+    return re.search(rb'name="csrf_token" value="([^"]+)"', page.data).group(1).decode()
+
+
+def test_creating_a_contact_from_the_page(client, admin_csrf, unique):
+    from indico_crm.models.contacts import Contact
+
+    name = f'Mario Rossi {unique}'
+    response = client.post('/admin/crm/contacts',
+                           data={'csrf_token': admin_csrf, 'first_name': 'Mario', 'last_name': name,
+                                 'email': f'mario.{unique}@example.com'})
+    assert response.status_code == 302
+    contact = Contact.query.filter_by(last_name=name).one()
+    assert contact.source.name == 'manual'
+
+
+def test_a_contact_without_a_last_name_is_not_created(client, admin_csrf, unique):
+    from indico_crm.models.contacts import Contact
+
+    before = Contact.query.count()
+    client.post('/admin/crm/contacts', data={'csrf_token': admin_csrf, 'first_name': 'Nobody'})
+    assert Contact.query.count() == before
+
+
+def test_editing_a_contact_from_its_page(client, scenario, unique):
+    from indico.core.db import db
+
+    from indico_crm.models.contacts import Contact, ContactSource
+
+    contact = Contact(first_name='Anna', last_name=f'Bianchi {unique}',
+                      email=f'anna.{unique}@example.com', source=ContactSource.manual)
+    db.session.add(contact)
+    db.session.commit()
+
+    response = client.get(f'/admin/crm/contacts/{contact.id}')
+    assert response.status_code == 200
+    csrf = re.search(rb'name="csrf_token" value="([^"]+)"', response.data).group(1).decode()
+    response = client.post(f'/admin/crm/contacts/{contact.id}',
+                           data={'csrf_token': csrf, 'action': 'edit', 'first_name': 'Anna',
+                                 'last_name': f'Bianchi Verdi {unique}', 'phone': '+39 055 1234567'})
+    assert response.status_code == 302
+    db.session.expire_all()
+    updated = Contact.query.filter_by(id=contact.id).one()
+    assert updated.last_name == f'Bianchi Verdi {unique}'
+    assert updated.phone == '+39 055 1234567'
+    assert updated.updated_dt is not None
+
+
+def test_recording_a_consent_keeps_the_history(client, scenario, unique):
+    """Withdrawing adds a row: the history is the proof."""
+    from indico.core.db import db
+
+    from indico_crm.models.consents import Consent, ConsentKind
+    from indico_crm.models.contacts import Contact, ContactSource
+
+    contact = Contact(first_name='Elena', last_name=f'Conti {unique}',
+                      email=f'elena.{unique}@example.com', source=ContactSource.manual)
+    db.session.add(contact)
+    db.session.commit()
+
+    response = client.get(f'/admin/crm/contacts/{contact.id}')
+    csrf = re.search(rb'name="csrf_token" value="([^"]+)"', response.data).group(1).decode()
+    for granted in ('yes', 'no'):
+        client.post(f'/admin/crm/contacts/{contact.id}',
+                    data={'csrf_token': csrf, 'action': 'consent', 'consent_kind': 'marketing',
+                          'granted': granted})
+    db.session.flush()
+    rows = (Consent.query.filter_by(contact_id=contact.id, kind=ConsentKind.marketing)
+            .order_by(Consent.effective_dt).all())
+    assert [row.granted for row in rows] == [True, False]
+
+
+def test_a_note_lands_on_the_timeline(client, scenario, unique):
+    from indico.core.db import db
+
+    from indico_crm.models.activities import Activity, ActivityKind, ActivityStatus
+    from indico_crm.models.contacts import Contact, ContactSource
+
+    contact = Contact(first_name='Paolo', last_name=f'Neri {unique}', source=ContactSource.manual)
+    db.session.add(contact)
+    db.session.commit()
+
+    response = client.get(f'/admin/crm/contacts/{contact.id}')
+    csrf = re.search(rb'name="csrf_token" value="([^"]+)"', response.data).group(1).decode()
+    client.post(f'/admin/crm/contacts/{contact.id}',
+                data={'csrf_token': csrf, 'action': 'note', 'note': f'Telefonata di verifica {unique}'})
+    activity = (Activity.query.filter_by(contact_id=contact.id, kind=ActivityKind.note)
+                .one())
+    assert activity.status is ActivityStatus.done
+    assert activity.done_dt is not None
+
+
+def test_creating_a_company_and_an_opportunity_from_the_pages(client, admin_csrf, unique):
+    from indico_crm.models.opportunities import OpportunityStage
+
+    company_name = f'Sponsor Generale {unique}'
+    response = client.post('/admin/crm/companies',
+                           data={'csrf_token': admin_csrf, 'name': company_name, 'kind': 'sponsor'})
+    assert response.status_code == 302
+    detail = client.get(response.headers['Location'])
+    assert detail.status_code == 200 and company_name.encode() in detail.data
+
+    # the opportunity form needs the company on the page
+    page = client.get('/admin/crm/opportunities').data.decode()
+    assert company_name in page

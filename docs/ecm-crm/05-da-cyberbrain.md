@@ -180,6 +180,10 @@ il budget dello sponsor.
 | Funzione | Stato |
 |---|---|
 | Lettere `.docx` | **Fatto** — `services/letters.py` rende il template Word e la pagina Inviti genera l'archivio |
+| Lettere di incarico (`src/lib/word/incarico.ts`) | **Fatto** — `services/engagement_letter.py` + `services/faculty.py`, pagina Faculty: saluti matriciali, importi in lettere, ritenuta 20%, sesso dal codice fiscale; il `.docx` storico del provider è in `templates/letters/lettera_incarico.docx` |
+| Email come bozza (`src/lib/email/sender.ts`) | **Fatto** — `services/mail_draft.py`: messaggio `.eml` scaricabile dalla pagina Messaggi, allegati già dentro, niente parte finché una persona non preme invio |
+| Template email sparsi nelle view | **Fatto** — registro unico in `services/templates.py`, pagina Messaggi che li mostra riempiti coi dati dell'evento |
+| Servizi albergo (`src/lib/import/hotelServices.ts`) | **Fatto** — `services/hotel.py` deduce i servizi dal programma (timetable + descrizione); la pagina Messaggi riempie il template `hotel_quote` e l'agente ha il tool `prepare_hotel_brief`, in sola lettura come il brief grafico |
 | Import archivio | **Fatto** — `/admin/ecm/import`, con le segnalazioni riga per riga |
 | Anagrafica evento e checklist | **Fatto** — panoramica, accreditamento, scadenze con urgenza |
 | Stampa unione | **Fatto** — import CSV/XLSX del foglio ospedali verso `InvitationBatch` |

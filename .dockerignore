@@ -1,0 +1,12 @@
+# The deployment copies this directory into the image as the `fork` build
+# context. Without this file the 282 MB .git directory travels with it and
+# ends up inside the image; the package version comes from indico/__init__.py,
+# not from git, so nothing here is needed to build.
+.git
+node_modules
+.venv
+__pycache__
+*.pyc
+build
+dist
+*.egg-info

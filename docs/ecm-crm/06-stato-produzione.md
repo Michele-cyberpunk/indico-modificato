@@ -30,10 +30,15 @@ configurato lo dichiarano invece di inventare dati.
 | **Ospiti e transfer** | Import della lista che manda lo sponsor (foglio, CSV, testo, Word, PDF): ogni riga letta con regole, le righe scartate elencate con il motivo, coperti a pranzo e cena contando gli accompagnatori, navette raggruppate per finestra oraria e per capienza del veicolo, foglio arrivi e foglio partenze stampabili |
 | **Inviti** | Import del foglio ospedali (CSV o XLSX, intestazioni italiane), costi di ospitalità per medico e per evento con confronto sul budget, generazione di tutte le lettere `.docx` in un archivio |
 | **Verifica pubblica** (`/ecm/verify/<token>`) | Pagina aperta a chiunque: numero, crediti, evento accreditato, data, versione regole. Nessun dato personale. Anche in JSON |
+| **Faculty** (`/event/<id>/manage/ecm/faculty`) | I relatori dell'evento da `person_links`, con ruolo, compenso, codice fiscale e numero di incarico compilati al volo; genera tutte le lettere di incarico `.docx` in un archivio e prepara l'email d'invito di ogni relatore |
+| **Messaggi** (`/event/<id>/manage/ecm/messages`) | Tutti i template email del registro riempiti coi dati dell'evento; ciò che manca è dichiarato invece di restare vuoto; ogni messaggio scaricabile come `.eml` che il client di posta apre come bozza con gli allegati già dentro |
+| **Report** (`/admin/ecm/reports`) | Totali eventi e crediti, per città e per mese, eventi con voci in ritardo |
+| **Export archivio** (`/admin/ecm/export`) | Riscrive tutto l'archivio nel formato del gestionale precedente: quanto esportato può essere rileto dall'import |
+| **Transfer export** (`…/guests/export.xlsx`) | La lista ospiti processata in un foglio XLSX |
 | **Provider** (`/admin/ecm/providers`) | Anagrafica provider e prefisso di numerazione |
 | **Import archivio** (`/admin/ecm/import`) | Analisi dell'esportazione del gestionale precedente con le segnalazioni riga per riga |
 | **Da documento a cartella** (`/admin/ecm/automator`) | Si incolla l'email dello sponsor o si caricano gli allegati (txt, Word, PDF, HTML/eml): la pagina estrae codice, date, relatori, specialità e modalità, dice **da quale frase** ha preso ogni valore, elenca ciò che non ha ricavato, mostra i cinque documenti iniziali e scarica la cartella evento in `.zip` già nominata secondo la convenzione del provider |
-| **CRM** (`/admin/crm/…`) | Contatti con le loro evidenze, aziende, opportunità aperte |
+| **CRM** (`/admin/crm/…`) | Contatti con ricerca e creazione; scheda contatto con modifica, note, consensi append-only, timeline attività+consensi, collegamenti a Indico ed evidenze; aziende con creazione; scheda azienda con contatti, opportunità ed eventi collegati; opportunità con creazione e filtro aperte/tutte |
 | **Agenti** (`/admin/agents/`) | Stato della coda, esecuzioni recenti, task falliti, coda di approvazione con Approva/Rifiuta, interruttore generale |
 
 ## Verificato eseguendo, non leggendo
@@ -50,15 +55,15 @@ configurato lo dichiarano invece di inventare dati.
 | Coda agenti | dedup, `FOR UPDATE SKIP LOCKED` fra due worker, backoff, recupero del lease di un worker morto |
 | Lista ospiti | lista incollata e foglio `.xlsx`: nomi in maiuscolo e con particelle, accompagnatori contati, righe scartate motivate, navette spezzate per capienza, foglio stampabile |
 | Da documento a cartella | email incollata e allegato Word: codice, data, relatori (particelle comprese) e cartella `0915 CARDIO … 0116-GDBO`, zip da 5 documenti scaricato dalla pagina |
-| **Suite di integrazione** (`plugins/integration_test.py`) | **43 test** su Indico e PostgreSQL reali |
-| Suite pure (senza database) | **376 test** |
+| **Suite di integrazione** (`plugins/integration_test.py`) | **45 test** su Indico e PostgreSQL reali: pipeline regolatoria, pagine ECM e CRM con creazione contatti/aziende/opportunità, consensi, note, brief albergo dedotto dal timetable |
+| Suite pure (senza database) | **568 test** (482 ecm + 24 crm + 62 agents) |
 | ruff con la configurazione del repository | pulito |
 
 ## Copertura degli strumenti degli agenti
 
 | Controllo | Esito |
 |---|---|
-| Strumenti implementati | 26 |
+| Strumenti implementati | 27 |
 | Autorizzati ma non implementati | **nessuno** |
 | Implementati ma non autorizzati | **nessuno** |
 | Azioni di approvazione senza esecutore | **nessuna** |
