@@ -30,26 +30,30 @@ graph TD
     end
 
     subgraph plugins["plugins/"]
-        ECM["<b>indico_ecm</b><br/>accreditamento · presenze · crediti<br/>attestati · inviti · ospiti"]
-        CRM["<b>indico_crm</b><br/>aziende · contatti · HCP<br/>opportunità · evidenze"]
+        ECM["<b>indico_ecm</b><br/>accreditamento · presenze · crediti<br/>attestati · inviti · ospiti<br/>faculty · messaggi · report"]
+        CRM["<b>indico_crm</b><br/>aziende · contatti · HCP<br/>opportunità · consensi<br/>scrivibile dall'ufficio"]
         AG["<b>indico_agents</b><br/>coda · tool · skill<br/>approvazioni · audit"]
         INT["<b>indico_integrations</b><br/>outbox transazionale"]
+        HOT["hotel.py + templates.py<br/>brief albergo · 14 email<br/>.eml come bozze"]
     end
 
     EV --> ECM
     PE --> ECM
+    PE -->|"person_updated"| CRM
     AU --> ECM
-    EV --> CRM
+    EV -->|"iscrizione → contatto<br/>foglio ospedali → aziende"| CRM
     ECM --> AG
     CRM --> AG
     AG --> INT
+    ECM --> HOT
+    HOT -->|".eml scaricata,<br/>una persona preme invio"| OUT["client di posta"]
     AG -->|"sola lettura"| CR["credit_rules.py<br/>motore deterministico"]
     ECM --> CR
 ```
 
 | Plugin | Schema | Tabelle | Rotte |
 |---|---|---|---|
-| `indico_ecm` | `plugin_ecm` | 14 | 21 |
+| `indico_ecm` | `plugin_ecm` | 14 | 23 |
 | `indico_crm` | `plugin_crm` | 9 | 5 |
 | `indico_agents` | `plugin_agents` | 5 | 3 |
 | `indico_integrations` | `plugin_integrations` | 1 | — |
