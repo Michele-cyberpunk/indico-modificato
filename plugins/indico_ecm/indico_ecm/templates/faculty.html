@@ -1,0 +1,120 @@
+{% extends 'events/management/base.html' %}
+{% from 'ecm:_macros.html' import csrf, nav %}
+
+{% block title %}Relatori e lettere di incarico{% endblock %}
+
+{% block content %}
+    {{ nav(event, 'ecm.faculty') }}
+
+    {% if not speakers %}
+        <div class="info-message-box">
+            <span class="icon"></span>
+            <div class="message-text">
+                Questo evento non ha ancora relatori. Si aggiungono dalla gestione evento di Indico;
+                questa pagina legge quelli, non ne tiene una copia.
+            </div>
+        </div>
+    {% else %}
+        {% if missing %}
+            <div class="warning-message-box">
+                <span class="icon"></span>
+                <div class="message-text">
+                    Il template Word chiede segnaposto che i dati non forniscono:
+                    <strong>{{ missing | join(', ') }}</strong>. Le lettere si generano lo stesso,
+                    con quei campi vuoti.
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="i-callout">
+            Il sesso non si deduce dal nome: senza codice fiscale e senza un titolo declinato
+            («Dott.ssa», «Prof.ssa») la lettera si apre con <strong>Spett.le</strong> invece di
+            sbagliare genere. Il compenso, se indicato, porta la ritenuta d'acconto del 20%.
+        </div>
+
+        <form method="POST" class="i-form">
+            {{ csrf() }}
+            <table class="i-table-widget">
+                <thead>
+                    <tr>
+                        <th>Relatore</th>
+                        <th>Titolo</th>
+                        <th>Sesso</th>
+                        <th>Ruolo</th>
+                        <th>Codice fiscale</th>
+                        <th>Data di nascita</th>
+                        <th>N. incarico</th>
+                        <th>Compenso €</th>
+                        <th>P. IVA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for speaker in speakers %}
+                        <tr>
+                            <td>
+                                {{ speaker.full_name }}
+                                {% if speaker.email %}
+                                    <br><small class="text-not-important">{{ speaker.email }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <select name="title-{{ speaker.person_id }}">
+                                    {% for value, label in titles %}
+                                        <option value="{{ value }}"
+                                                {{ 'selected' if speaker.title == value }}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select name="gender-{{ speaker.person_id }}">
+                                    <option value="unknown" {{ 'selected' if not speaker.gender }}>Non dichiarato</option>
+                                    <option value="F" {{ 'selected' if speaker.gender == 'F' }}>Femminile</option>
+                                    <option value="M" {{ 'selected' if speaker.gender == 'M' }}>Maschile</option>
+                                </select>
+                            </td>
+                            <td><input type="text" name="role-{{ speaker.person_id }}" value="{{ speaker.role }}"></td>
+                            <td><input type="text" name="tax_code-{{ speaker.person_id }}" maxlength="16"></td>
+                            <td><input type="text" name="birth_date-{{ speaker.person_id }}" placeholder="gg/mm/aaaa"></td>
+                            <td><input type="text" name="letter_number-{{ speaker.person_id }}" size="8"></td>
+                            <td><input type="text" name="fee-{{ speaker.person_id }}" size="8" placeholder="800,00"></td>
+                            <td><input type="checkbox" name="vat-{{ speaker.person_id }}"></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="toolbar">
+                <div class="group">
+                    <button type="submit" name="action" value="letters" class="i-button highlight">
+                        Genera le lettere di incarico
+                    </button>
+                    <button type="submit" name="action" value="invite" class="i-button">
+                        Prepara gli inviti
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        {% if invitation %}
+            <h3>Inviti pronti da copiare</h3>
+            <div class="i-callout">
+                Nessun server di posta è configurato: la piattaforma prepara il testo e lo mostra,
+                non lo spedisce.
+            </div>
+            {% for draft in invitation %}
+                <div class="i-box">
+                    <div class="i-box-header">
+                        <div class="i-box-title">
+                            {{ draft.speaker.full_name }}
+                            {%- if draft.speaker.email %} &lt;{{ draft.speaker.email }}&gt;{% endif %}
+                        </div>
+                    </div>
+                    <div class="i-box-content">
+                        <p><strong>Oggetto:</strong> {{ draft.message.subject }}</p>
+                        {{ draft.message.body | safe }}
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endif %}
+{% endblock %}
