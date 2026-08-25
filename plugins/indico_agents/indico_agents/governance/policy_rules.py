@@ -47,6 +47,7 @@ TOOL_POLICIES = {
     'list_due_reminders': ToolPolicy(AutonomyLevel.read_only),
     'invitation_costs': ToolPolicy(AutonomyLevel.read_only),
     'prepare_graphic_brief': ToolPolicy(AutonomyLevel.read_only),
+    'prepare_hotel_brief': ToolPolicy(AutonomyLevel.read_only),
     # drafting: produces proposals a person applies
     'draft_email': ToolPolicy(AutonomyLevel.drafting, writes=True, requires_approval=True),
     'prepare_certificate_batch': ToolPolicy(AutonomyLevel.drafting, writes=True, requires_approval=True),

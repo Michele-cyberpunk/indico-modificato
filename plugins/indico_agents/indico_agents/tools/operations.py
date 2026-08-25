@@ -101,7 +101,7 @@ def prepare_graphic_brief(context, event_id):
         'event_name': brief['event_name'], 'specialty': brief['specialty'], 'place': brief['place'],
         'date_text': brief['date'], 'palette_description': brief['palette_description'],
         'cmyk': ', '.join(f'{key}: {value}' for key, value in brief['cmyk'].items()),
-        'rgb': ', '.join(brief['rgb']), 'keywords': ', '.join(brief['matched_keywords']),
+        'keywords': ', '.join(brief['matched_keywords']),
     })
     return {'found': True, 'brief': brief, 'message': message}
 
@@ -148,6 +148,35 @@ def prepare_invitation_letters(context, event_id):
         letters.append({'row_id': row.id, 'filename': invitation_filename(invitation),
                         'context': letter_context(invitation)})
     return {'count': len(letters), 'letters': letters}
+
+
+@tool('prepare_hotel_brief', description="Prepara la richiesta all'albergo dai servizi dedotti dal programma. Non invia.")
+def prepare_hotel_brief(context, event_id):
+    from indico.modules.events import Event
+
+    from indico_ecm.services.attendance import event_session_blocks
+    from indico_ecm.services.hotel import brief_lines, deduce
+    from indico_ecm.services.templates import render_named
+
+    event = Event.get(event_id)
+    if event is None:
+        return {'found': False}
+    # The programme is what the day actually contains: the timetable titles plus
+    # the event description, which is where a sponsor writes the programme.
+    programme_text = '\n'.join(filter(None, ((block.full_title or '') for block in event_session_blocks(event))))
+    source = f'{event.title}\n{event.description or ""}\n{programme_text}'.strip()
+    services = deduce(source,
+                      start_time=(event.start_dt.strftime('%H:%M') if event.start_dt else ''),
+                      end_time=(event.end_dt.strftime('%H:%M') if event.end_dt else ''))
+    message = render_named('hotel_quote', {
+        'event_name': event.title,
+        'hotel_name': (event.venue_name or ''),
+        'date_text': (event.start_dt.strftime('%d/%m/%Y') if event.start_dt else ''),
+        'participants': str(event.registrations.count()),
+        'services': '<br>' + '<br>'.join(brief_lines(services)),
+        'sender_name': '',
+    })
+    return {'found': True, 'services': brief_lines(services), 'message': message}
 
 
 @tool('create_checklist', description='Crea le voci di checklist mancanti su un evento.')
