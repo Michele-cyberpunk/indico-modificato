@@ -1,0 +1,95 @@
+/* Styling the ECM pages need on top of Indico's own stylesheets.
+ *
+ * Everything that Indico already provides — buttons, labels, tables, boxes,
+ * message boxes, muted text — is used from Indico directly. What is left here
+ * is only what has no equivalent there, and it borrows Indico's palette
+ * (indico/web/client/styles/base/_palette.scss) so the pages keep looking like
+ * the rest of the application.
+ */
+
+/* Several one-button POST forms sitting on the same table row. */
+.inline-form {
+  display: inline;
+}
+
+/* Extracted text shown back to the user, wrapped instead of clipped. */
+.ecm-preview {
+  max-height: 24em;
+  overflow: auto;
+  padding: 1em;
+  background: #f9f9f9; /* $light-gray */
+  border: 1px solid #dfdfdf; /* $pastel-gray */
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Label and value pairs on the event overview. */
+.ecm-definitions {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.3em 1.5em;
+  max-width: 40em;
+  margin: 0;
+}
+
+.ecm-definitions dt {
+  font-weight: bold;
+}
+
+.ecm-definitions dd {
+  margin: 0;
+}
+
+/* The transfer sheet is handed to a driver on paper: it needs borders that
+ * survive printing and no application chrome around them. Colours are Indico's
+ * ($dark-black, $black, $pastel-gray, $light-gray, $dark-yellow).
+ */
+.ecm-transfer-sheet {
+  max-width: 52em;
+  margin: 2em auto;
+}
+
+.ecm-transfer-sheet h1 {
+  padding-bottom: 0.3em;
+  border-bottom: 2px solid #333;
+}
+
+.ecm-transfer-sheet h2 {
+  margin-bottom: 0.2em;
+}
+
+.ecm-transfer-sheet h2 .vehicle {
+  font-weight: normal;
+}
+
+.ecm-transfer-sheet .group-size {
+  margin-top: 0;
+}
+
+.ecm-transfer-sheet .to-call {
+  color: #9c793b;
+}
+
+.ecm-transfer-sheet table {
+  width: 100%;
+  margin-bottom: 1.5em;
+  border-collapse: collapse;
+}
+
+.ecm-transfer-sheet th,
+.ecm-transfer-sheet td {
+  padding: 6px;
+  border: 1px solid #dfdfdf;
+  text-align: left;
+}
+
+.ecm-transfer-sheet thead tr {
+  background: #f9f9f9;
+}
+
+@media print {
+  .ecm-transfer-sheet {
+    max-width: none;
+    margin: 0;
+  }
+}
