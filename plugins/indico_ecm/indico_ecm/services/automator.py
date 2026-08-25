@@ -31,6 +31,7 @@ from datetime import date
 
 from indico_ecm.services.legacy_import import parse_date
 from indico_ecm.services.naming import generate_folder_name
+from indico_ecm.services import programme
 from indico_ecm.services.specialty import identify_event_format, identify_specialty
 
 
@@ -122,7 +123,10 @@ _TOKEN = rf'(?:{_NAME}|{_PARTICLE})\b'
 SPEAKER_RE = re.compile(rf'\b{_TITLE}\s*({_TOKEN}(?:\s+{_TOKEN}){{0,3}})')
 #: Role words that follow a name and are not part of it
 ROLE_WORDS = frozenset({'presidente', 'direttore', 'responsabile', 'coordinatore', 'moderatore',
-                        'relatore', 'relatrice', 'segretario', 'segretaria', 'docente', 'tutor'})
+                        'relatore', 'relatrice', 'segretario', 'segretaria', 'docente', 'tutor',
+                        # A programme puts these labels on the line after a name;
+                        # without them a speaker came out as "Mario Rossi Faculty".
+                        'faculty', 'scientifico', 'scientifica', 'discenti', 'partecipanti'})
 
 
 def find_event_code(text):
@@ -172,6 +176,15 @@ class Extraction:
     specialty: str = ''
     activity_format: str = ''
     folder_name: str = ''
+    venue: str = ''
+    city: str = ''
+    province: str = ''
+    credits: str = ''
+    participants: str = ''
+    start_time: str = ''
+    end_time: str = ''
+    #: The speakers with the role and title their line carried
+    people: list = field(default_factory=list)
     #: field -> the sentence it was taken from
     evidence: dict = field(default_factory=dict)
     #: What the rules could not determine and a model (or a person) must supply
@@ -194,9 +207,17 @@ def extract(text, *, known_sponsor='', known_location=''):
 
     Deliberately conservative: it reports what it saw and where, and lists what
     it could not resolve, rather than producing a confident guess.
+
+    The document itself is read by `services/programme.py`, which knows the
+    shape of a Progetto Formativo — the title under the header, the labelled
+    lines, the timetable with the speakers under each session. What stays here
+    is what is about the event rather than the document: the provider's own
+    event code, the specialty, the format.
     """
     text = text or ''
     result = Extraction(sponsor=known_sponsor, location=known_location)
+    document = programme.read(text)
+    result.evidence.update(document.evidence)
 
     code = find_event_code(text)
     if code:
@@ -205,20 +226,37 @@ def extract(text, *, known_sponsor='', known_location=''):
     else:
         result.unresolved.append('event_code')
 
-    dates = [parse_date(match) for match in DATE_RE.findall(text)]
-    dates = sorted({value for value in dates if value})
-    if dates:
-        result.event_date = dates[0]
-        result.evidence['event_date'] = _sentence_containing(text, DATE_RE.findall(text)[0])
-        if len(dates) > 1:
-            result.end_date = dates[1]
+    if document.start_date:
+        result.event_date = document.start_date
+        result.end_date = document.end_date
     else:
         result.unresolved.append('event_date')
 
-    speakers = find_speakers(text)
+    # A title in front of a name is the strongest signal; the programme reader
+    # adds the ones written without one, under their session.
+    speakers = list(find_speakers(text))
+    for person in document.people:
+        if person.name not in speakers:
+            speakers.append(person.name)
     result.speakers = speakers
+    result.people = document.people
     if not speakers:
         result.unresolved.append('speakers')
+
+    if document.event_name:
+        result.event_name = document.event_name
+    else:
+        result.unresolved.append('event_name')
+
+    if not result.location:
+        result.location = document.city or document.venue
+    result.venue = document.venue
+    result.city = document.city
+    result.province = document.province
+    result.credits = document.credits
+    result.participants = document.participants
+    result.start_time = document.start_time
+    result.end_time = document.end_time
 
     match = identify_specialty(text)
     result.specialty = match.specialty
@@ -228,7 +266,8 @@ def extract(text, *, known_sponsor='', known_location=''):
         result.unresolved.append('location')
     if not result.sponsor:
         result.unresolved.append('sponsor')
-    result.unresolved.append('event_name')
+    if not result.activity_format:
+        result.unresolved.append('activity_format')
     return result
 
 

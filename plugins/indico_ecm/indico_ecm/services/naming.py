@@ -26,10 +26,16 @@ REMOTE_TYPE_MARKERS = ('WEB', 'FAD')
 
 
 def sanitize_part(part):
-    """Collapse whitespace, slashes and underscores into single hyphens."""
+    """Collapse whitespace, slashes and underscores into single hyphens.
+
+    Characters Windows forbids in a path are dropped first: the event title is
+    read out of the document now, and a title like `IMP-ACT: Intestinal
+    Microbiota` would otherwise put a colon in a folder name on the share.
+    """
     if part is None:
         return ''
-    return re.sub(r'[\s/_]+', '-', str(part).strip())
+    cleaned = re.sub(r'[<>:"|?*]', '', str(part).strip())
+    return re.sub(r'[\s/_]+', '-', cleaned.strip())
 
 
 def generate_folder_name(*, start_date=None, end_date=None, event_name='', event_type='', city='',

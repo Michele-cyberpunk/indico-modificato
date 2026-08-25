@@ -3,44 +3,52 @@
 {% endmacro %}
 
 {% macro urgency_label(urgency) %}
-    {%- if urgency == 'missed' %}<span style="color:#b91c1c;font-weight:bold">scaduto</span>
-    {%- elif urgency == 'late' %}<span style="color:#c2410c;font-weight:bold">in ritardo</span>
-    {%- elif urgency == 'due' %}<span style="color:#a16207">in scadenza</span>
-    {%- else %}<span style="color:#15803d">ok</span>{% endif %}
+    {%- if urgency == 'missed' %}<span class="i-label danger small">{% trans %}scaduto{% endtrans %}</span>
+    {%- elif urgency == 'late' %}<span class="i-label warning small">{% trans %}in ritardo{% endtrans %}</span>
+    {%- elif urgency == 'due' %}<span class="i-label highlight small">{% trans %}in scadenza{% endtrans %}</span>
+    {%- else %}<span class="i-label accept small">{% trans %}ok{% endtrans %}</span>{% endif %}
 {% endmacro %}
 
 {% macro state_label(state) %}
-    {%- if state == 'approved' %}<span style="color:#15803d;font-weight:bold">approvata</span>
-    {%- elif state == 'proposed' %}<span style="color:#1d4ed8">proposta</span>
-    {%- elif state == 'denied' %}<span style="color:#b91c1c">non idoneo</span>
-    {%- elif state == 'revoked' %}<span style="color:#6b7280">revocata</span>
-    {%- else %}{{ state }}{% endif %}
+    {%- if state == 'approved' %}<span class="i-label accept small">{% trans %}approvata{% endtrans %}</span>
+    {%- elif state == 'proposed' %}<span class="i-label highlight small">{% trans %}proposta{% endtrans %}</span>
+    {%- elif state == 'denied' %}<span class="i-label danger small">{% trans %}non idoneo{% endtrans %}</span>
+    {%- elif state == 'revoked' %}<span class="i-label disabled small">{% trans %}revocata{% endtrans %}</span>
+    {%- else %}<span class="i-label small">{{ state }}</span>{% endif %}
 {% endmacro %}
 
 {% macro admin_nav(current) %}
-    <div style="margin-bottom:1.5em;padding-bottom:.6em;border-bottom:1px solid #ddd">
-        {% for endpoint, label in [('ecm.providers', 'Provider'), ('ecm.automator', 'Da documento a cartella'),
-                                   ('ecm.legacy_import', 'Import archivio')] %}
-            {% if endpoint == current %}
-                <strong style="margin-right:1.2em">{{ label }}</strong>
-            {% else %}
-                <a href="{{ url_for_plugin(endpoint) }}" style="margin-right:1.2em">{{ label }}</a>
-            {% endif %}
-        {% endfor %}
+    <div class="toolbar space-after">
+        <div class="group">
+            {% for endpoint, label in [('ecm.providers', 'Provider'),
+                                       ('ecm.reports', 'Report e statistiche'),
+                                       ('ecm.automator', 'Da documento a cartella'),
+                                       ('ecm.legacy_import', 'Import archivio')] %}
+                {% if endpoint == current %}
+                    <span class="i-button highlight">{{ label }}</span>
+                {% else %}
+                    <a class="i-button" href="{{ url_for_plugin(endpoint) }}">{{ label }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
     </div>
 {% endmacro %}
 
 {% macro nav(event, current) %}
-    <div style="margin-bottom:1.5em;padding-bottom:.6em;border-bottom:1px solid #ddd">
-        {% for endpoint, label in [('ecm.event_overview', 'Panoramica'), ('ecm.accreditation', 'Accreditamento'),
-                                   ('ecm.attendance', 'Presenze'), ('ecm.participants', 'Crediti'),
-                                   ('ecm.certificates', 'Attestati'), ('ecm.invitations', 'Inviti'),
-                                   ('ecm.guests', 'Ospiti e transfer')] %}
-            {% if endpoint == current %}
-                <strong style="margin-right:1.2em">{{ label }}</strong>
-            {% else %}
-                <a href="{{ url_for_plugin(endpoint, event) }}" style="margin-right:1.2em">{{ label }}</a>
-            {% endif %}
-        {% endfor %}
+    <div class="toolbar space-after">
+        <div class="group">
+            {% for endpoint, label in [('ecm.event_overview', 'Panoramica'), ('ecm.accreditation', 'Accreditamento'),
+                                       ('ecm.attendance', 'Presenze'), ('ecm.participants', 'Crediti'),
+                                       ('ecm.certificates', 'Attestati'), ('ecm.invitations', 'Inviti'),
+                                       ('ecm.faculty', 'Relatori'),
+                                       ('ecm.messages', 'Comunicazioni'),
+                                       ('ecm.guests', 'Ospiti e transfer')] %}
+                {% if endpoint == current %}
+                    <span class="i-button highlight">{{ label }}</span>
+                {% else %}
+                    <a class="i-button" href="{{ url_for_plugin(endpoint, event) }}">{{ label }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
     </div>
 {% endmacro %}

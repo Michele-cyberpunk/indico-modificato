@@ -19,7 +19,8 @@ from indico_ecm.services.accreditation_mail import (AccreditationRequest, build_
 from indico_ecm.services.letters import (InvitationRow, agreement_terms, invitation_filename, letter_context,
                                          pluralize_role)
 from indico_ecm.services.naming import folder_path, generate_folder_name, sanitize_filename, sanitize_part
-from indico_ecm.services.specialty import (FORMAT_FAD_ASYNC, FORMAT_RES_WITH_TEST, FORMAT_WEBINAR, graphic_brief,
+from indico_ecm.services.specialty import (FORMAT_FAD_ASYNC, FORMAT_FSC_WITH_TEST, FORMAT_FSC_WITHOUT_TEST,
+                                           FORMAT_RES_WITH_TEST, FORMAT_WEBINAR, graphic_brief,
                                            identify_event_format, identify_specialty)
 
 
@@ -135,7 +136,7 @@ def test_cardiology_is_detected_from_the_title():
     match = identify_specialty('Scompenso cardiaco e stenosi aortica: update')
     assert match.specialty == 'cardiovascular'
     assert match.score >= 2
-    assert '#1e40af' in match.palette.rgb
+    assert match.palette.primary.startswith('C:')
 
 
 def test_diabetes_is_endocrinology():
@@ -159,17 +160,41 @@ def test_empty_text_is_handled():
     ('FAD sincrona su piattaforma', FORMAT_WEBINAR),
     ('Evento RES con questionario', FORMAT_RES_WITH_TEST),
     ('Incontro presso Hotel Excelsior', FORMAT_RES_WITH_TEST),
-    ('', FORMAT_FAD_ASYNC),
+    ('Tipologia: Residenziale (RES)', FORMAT_RES_WITH_TEST),
+    ('Tipologia: FSC con questionario', FORMAT_FSC_WITH_TEST),
+    ('Percorso Gruppo di Miglioramento', FORMAT_FSC_WITHOUT_TEST),
+    # Nothing said, nothing assumed: the format goes into the folder name.
+    ('', ''),
+    ('Titolo senza indizi di formato', ''),
 ))
 def test_identify_event_format(text, expected):
     assert identify_event_format(text) == expected
+
+
+@pytest.mark.parametrize('text', (
+    'Responsabile Scientifico: Mario Rossi',
+    'Congresso Nazionale di Cardiologia',
+    'Il presidente apre i lavori',
+))
+def test_res_is_matched_as_a_word_and_not_as_a_substring(text):
+    # `res` inside "Responsabile", "Congresso" and "presidente" used to file
+    # almost every Italian programme as residential.
+    assert identify_event_format(text) != FORMAT_RES_WITH_TEST
+
+
+def test_a_declared_type_wins_over_the_rest_of_the_document():
+    text = '''Tipologia: FAD asincrona
+Si terrà presso Hotel Excelsior, in presenza di un questionario'''
+    assert identify_event_format(text) == FORMAT_FAD_ASYNC
 
 
 def test_graphic_brief_is_citable():
     brief = graphic_brief('Scompenso cardiaco', event_name='Cardio Update', place='Milano')
     assert brief['specialty'] == 'cardiovascular'
     assert 'scompenso' in brief['matched_keywords']
-    assert brief['rgb'][0] == '#1e40af'
+    assert brief['cmyk']['primary'] == 'C:60 M:0 Y:30 K:0'
+    # No hex triplet: the earlier one came from Tailwind, not from the provider.
+    assert 'rgb' not in brief
     assert brief['event_name'] == 'Cardio Update'
 
 
@@ -241,3 +266,13 @@ def test_missing_fields_are_listed():
     assert 'sponsor' in missing_fields(make_request(sponsor=''))
     assert set(missing_fields(AccreditationRequest(event_name=''))) == {
         'event_name', 'event_date', 'place', 'sponsor', 'folder_name', 'recipient_email'}
+
+
+def test_no_palette_carries_an_invented_screen_colour():
+    """The provider specified quadrichromy; a hex triplet here was fabricated."""
+    from indico_ecm.services.specialty import SPECIALTIES
+
+    for name, (_keywords, palette) in SPECIALTIES.items():
+        for value in (palette.primary, palette.secondary, palette.neutral):
+            assert value.startswith('C:'), f'{name}: {value}'
+        assert not hasattr(palette, 'rgb'), name
