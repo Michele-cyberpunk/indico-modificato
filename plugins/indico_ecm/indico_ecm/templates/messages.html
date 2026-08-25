@@ -1,0 +1,87 @@
+{% extends 'events/management/base.html' %}
+{% from 'ecm:_macros.html' import nav %}
+
+{% block title %}Comunicazioni{% endblock %}
+
+{% block content %}
+    {{ nav(event, 'ecm.messages') }}
+
+    <div class="i-callout">
+        Ogni messaggio è già compilato con i dati di questo evento. <strong>Scarica bozza</strong>
+        produce un file <code>.eml</code>: aprendolo, il client di posta lo mostra come bozza già
+        pronta, e parte solo quando lo mandi tu. Dove manca un dato la piattaforma lo dichiara
+        invece di lasciare un buco nel testo.
+    </div>
+
+    <table class="i-table-widget">
+        <thead>
+            <tr>
+                <th>Messaggio</th>
+                <th>Versione</th>
+                <th>Stato</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for message in messages %}
+                <tr>
+                    <td>
+                        <a href="#{{ message.template }}">{{ catalogue[message.template].description }}</a>
+                        <br><small class="text-not-important">{{ message.template }}</small>
+                    </td>
+                    <td>{{ message.version }}</td>
+                    <td>
+                        {% if message.missing %}
+                            <span class="i-label warning small">manca {{ message.missing | join(', ') }}</span>
+                        {% else %}
+                            <a class="i-button"
+                               href="{{ url_for_plugin('ecm.messages', event, draft=message.template) }}">
+                                Scarica bozza
+                            </a>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% for message in messages %}
+        <div class="i-box" id="{{ message.template }}">
+            <div class="i-box-header">
+                <div class="i-box-title">{{ catalogue[message.template].description }}</div>
+            </div>
+            <div class="i-box-content">
+                {% if message.missing %}
+                    <div class="warning-message-box">
+                        <span class="icon"></span>
+                        <div class="message-text">
+                            Servono ancora: <strong>{{ message.missing | join(', ') }}</strong>.
+                        </div>
+                    </div>
+                {% else %}
+                    <p><strong>Oggetto:</strong> {{ message.subject }}</p>
+                    {{ message.body | safe }}
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+
+    <h3>Documenti Word</h3>
+    <table class="i-table-widget">
+        <thead>
+            <tr>
+                <th>Documento</th>
+                <th>Template</th>
+                <th>Segnaposto</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, document in documents.items() %}
+                <tr>
+                    <td>{{ document.description }}</td>
+                    <td><small class="text-not-important">{{ document.path }}</small></td>
+                    <td><small class="text-not-important">{{ document.context | join(', ') }}</small></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

@@ -159,13 +159,14 @@ GRAPHIC_BRIEF = MessageTemplate(
           "<p>per l'evento <strong>{event_name}</strong> ({date_text}, {place}):</p>"
           '<p><strong>Specialità rilevata:</strong> {specialty}<br>'
           '<strong>Palette:</strong> {palette_description}<br>'
-          '<strong>CMYK:</strong> {cmyk}<br>'
-          '<strong>RGB:</strong> {rgb}</p>'
+          '<strong>CMYK:</strong> {cmyk}</p>'
+          '<p>La resa a schermo va convertita dal CMYK con il vostro profilo colore: '
+          'la specifica del provider è in quadricromia.</p>'
           '<p><strong>Parole chiave che hanno determinato la scelta:</strong> {keywords}</p>'
           '<p>{notes}</p>'
           '<p>Grazie,<br>{sender_name}</p>'),
     required=('event_name', 'specialty'),
-    defaults={'date_text': '', 'place': '', 'palette_description': '', 'cmyk': '', 'rgb': '',
+    defaults={'date_text': '', 'place': '', 'palette_description': '', 'cmyk': '',
               'keywords': '', 'notes': '', 'sender_name': ''},
 )
 
@@ -192,11 +193,128 @@ DEADLINE_ALERT = MessageTemplate(
     defaults={'days_to_event': '', 'notes': ''},
 )
 
+NUME_UPLOAD = MessageTemplate(
+    name='nume_upload',
+    description="Richiesta di caricamento dell'evento sulla piattaforma NUME.",
+    subject='Richiesta Caricamento Evento su NUME: {event_name}',
+    body=('<p>Buongiorno a Tutti,</p>'
+          "<p>Si richiede il caricamento sulla piattaforma NUME dell'evento:</p>"
+          '<p>TITOLO: {event_name}<br>'
+          'DATA: {date_text}<br>'
+          'CITTÀ: {city}<br>'
+          'CODICE ACCESSO: {access_code}<br>'
+          'CODICE EVENTO/COD COMMESSA: {event_code}<br>'
+          'N° CREDITI: {credits}<br>'
+          'N° DISCENTI: {participants}<br>'
+          'CODICE AGENAS: {agenas_code}<br>'
+          'ORARIO: {start_time} - {end_time}<br>'
+          'TIPO: {event_type}</p>'
+          '<p>Grazie.</p>'),
+    required=('event_name',),
+    defaults={'date_text': '', 'city': '', 'access_code': '', 'event_code': '', 'credits': '',
+              'participants': '', 'agenas_code': '', 'start_time': '', 'end_time': '',
+              'event_type': ''},
+)
+
+HOSTESS_REQUEST = MessageTemplate(
+    name='hostess_request',
+    description="Richiesta di disponibilità hostess per l'evento.",
+    subject='Richiesta Hostess per Evento: {event_name}',
+    body=('<p>Gentile {recipient},</p>'
+          '<p>La contattiamo per richiedere gentilmente la Sua disponibilità per la presenza '
+          'di {hostess_count} hostess per il seguente evento:</p>'
+          '<p>- Nome Evento: {event_name}<br>'
+          '- Data: {date_text}<br>'
+          '- Orario: {start_time} - {end_time}<br>'
+          '- Città: {city}<br>'
+          '- Luogo: {place}<br>'
+          '- Codice Evento: {event_code}</p>'
+          "<p>Ti preghiamo di confermarci la disponibilità delle hostess per l'evento.</p>"
+          '<p>Grazie e cordiali saluti.</p>'),
+    required=('event_name',),
+    defaults={'recipient': '', 'hostess_count': '1', 'date_text': '', 'start_time': '',
+              'end_time': '', 'city': '', 'place': '', 'event_code': ''},
+)
+
+SPEAKER_INVITATION = MessageTemplate(
+    name='speaker_invitation',
+    description=('Invito iniziale a un relatore. Non nomina la lettera di incarico: '
+                 'quella esiste solo dopo la conferma.'),
+    subject='Invito a partecipare come {role}: {event_name} presso {place}',
+    body=('<p>Buongiorno {salutation},</p>'
+          '<p>in qualità di Provider e Segreteria Organizzativa del Corso ECM '
+          '&quot;{event_name}&quot;, organizzato con il contributo non condizionante di '
+          '&quot;{sponsor}&quot;, il {date_text}, presso &quot;{place}&quot;, siamo lieti di '
+          'invitarLa a partecipare in qualità di {role}.</p>'
+          '<p>In allegato troverà il programma scientifico proposto.</p>'
+          '<p>Una volta ricevuto il Suo gentile riscontro, saremo lieti di inviarLe la '
+          "documentazione amministrativa relativa all'incarico. A tal proposito Le chiederei "
+          'gentilmente il Suo codice fiscale per agevolare la procedura.</p>'
+          '<p>Restiamo a Sua completa disposizione per ogni eventuale necessità o '
+          'informazione.</p>'
+          '<p>Cordiali saluti,<br>{sender_name}</p>'),
+    required=('event_name', 'role'),
+    defaults={'salutation': '', 'sponsor': '', 'date_text': '', 'place': '', 'sender_name': ''},
+)
+
+EVENT_UPDATE_NUME = MessageTemplate(
+    name='event_update_nume',
+    description='Comunicazione a NUME di un cambio di data o di luogo.',
+    subject='Aggiornamento Evento: {event_name}',
+    body=('<p>Gentile Responsabile NUME,</p>'
+          "<p>Vi comunichiamo che sono stati effettuati alcuni aggiornamenti per l'evento:</p>"
+          '<p>- Nome Evento: {event_name}<br>'
+          '- Nuova Data: {new_date}<br>'
+          '- Nuovo Luogo: {new_place}</p>'
+          '<p>Per favore, aggiorna le informazioni sulla piattaforma NUME di conseguenza.</p>'
+          '<p>Grazie.</p>'),
+    required=('event_name',),
+    defaults={'new_date': 'Nessun Cambio', 'new_place': 'Nessun Cambio'},
+)
+
+EVENT_UPDATE_GRAPHICS = MessageTemplate(
+    name='event_update_graphics',
+    description='Comunicazione al grafico di un cambio di data o di luogo.',
+    subject='Aggiornamento Grafica per Evento: {event_name}',
+    body=('<p>Gentile Team,</p>'
+          "<p>Vi comunichiamo che sono stati effettuati alcuni aggiornamenti per l'evento:</p>"
+          '<p>- Nome Evento: {event_name}<br>'
+          '- Nuova Data: {new_date}<br>'
+          '- Nuovo Luogo: {new_place}</p>'
+          "<p>Per favore, aggiorna la grafica dell'evento di conseguenza.</p>"
+          '<p>Grazie.</p>'),
+    required=('event_name',),
+    defaults={'new_date': 'Nessun Cambio', 'new_place': 'Nessun Cambio'},
+)
+
+
+HOTEL_QUOTE = MessageTemplate(
+    name='hotel_quote',
+    description="Richiesta di disponibilità e preventivo all'albergo che ospita l'evento.",
+    subject='Richiesta disponibilità e preventivo – Evento ECM "{event_name}" presso {hotel_name} ({date_text})',
+    body=('<p>Buongiorno,</p>'
+          "<p>stiamo organizzando l'evento medico <strong>{event_name}</strong> e vorremmo "
+          'chiedervi gentilmente la vostra disponibilità per le seguenti date: {date_text}.</p>'
+          '<p>Vi chiediamo un preventivo per i seguenti servizi, calcolati su un numero stimato '
+          'di {participants} persone:</p>'
+          '{services}'
+          '<p>Vi preghiamo di includere nel preventivo i vostri dati fiscali completi '
+          '(Ragione Sociale, P.IVA e Codice SDI) necessari per la nostra contabilità.</p>'
+          '<p>Saremmo grati se poteste confermare la vostra disponibilità per queste date e '
+          'fornirci un preventivo (comprensivo di IVA) per i servizi richiesti.</p>'
+          '<p>Restiamo in attesa di una vostra risposta e porgiamo cordiali saluti.</p>'
+          '<p>Grazie,<br>{sender_name}</p>'),
+    required=('event_name',),
+    defaults={'hotel_name': '', 'date_text': '', 'participants': '', 'services': '',
+              'sender_name': ''},
+)
+
 
 MESSAGE_TEMPLATES = {
     template.name: template for template in (
         ACCREDITATION_REQUEST, TASK_UPDATE, INVITATION_EMAIL, MISSING_ECM_DATA, CERTIFICATE_READY,
-        GRAPHIC_BRIEF, REMINDER_DUE, DEADLINE_ALERT,
+        GRAPHIC_BRIEF, REMINDER_DUE, DEADLINE_ALERT, NUME_UPLOAD, HOSTESS_REQUEST,
+        SPEAKER_INVITATION, EVENT_UPDATE_NUME, EVENT_UPDATE_GRAPHICS, HOTEL_QUOTE,
     )
 }
 
@@ -212,6 +330,24 @@ def render_named(name, context, **kwargs):
     return render(get_template(name), context, **kwargs)
 
 
+def preview(template: MessageTemplate, context):
+    """Render a template for the page that lists them, or say what is missing.
+
+    The list has to show every template, including the ones this event has no
+    data for yet, so a missing value is reported instead of raising.
+    """
+    try:
+        rendered = render(template, context)
+    except TemplateError as exc:
+        values = dict(template.defaults) | {k: v for k, v in context.items() if v is not None}
+        needed = set(placeholders(template.subject)) | set(placeholders(template.body))
+        missing = sorted((set(template.required) - {k for k, v in values.items() if v})
+                         | (needed - values.keys()))
+        return {'template': template.name, 'version': template.version, 'subject': '', 'body': '',
+                'missing': missing, 'error': str(exc)}
+    return rendered | {'missing': [], 'error': ''}
+
+
 #: Document templates shipped with the plugin, relative to `templates/`
 DOCUMENT_TEMPLATES = {
     'invitation_letter': {
@@ -219,6 +355,14 @@ DOCUMENT_TEMPLATES = {
         'description': 'Lettera di invito ai medici, template Word storico del provider.',
         'context': ('destinatario', 'nomeOspedale', 'numeroMedici', 'ruolo', 'nomeEvento', 'luogoEvento',
                     'dataEvento', 'fraseRepartoOspedale', 'altreNote', 'userName'),
+    },
+    'engagement_letter': {
+        'path': 'letters/lettera_incarico.docx',
+        'description': "Lettera di incarico al relatore, template Word storico del provider.",
+        'context': ('saluto', 'cognome_nome', 'data_nascita', 'email', 'ruolo', 'evento_ecm',
+                    'titolo_progetto', 'codice_progetto', 'codice_evento', 'numero_incarico',
+                    'data_evento', 'data_fine_evento', 'modalita', 'anno', 'compenso',
+                    'compenso_lettere', 'ritenuta_acconto', 'totale_netto', 'nota_piva'),
     },
 }
 

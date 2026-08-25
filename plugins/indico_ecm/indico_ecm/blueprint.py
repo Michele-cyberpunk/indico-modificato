@@ -8,7 +8,9 @@ from indico.core.plugins import IndicoPluginBlueprint
 from indico_ecm.controllers import (RHCertificateVerify, RHECMAccreditation, RHECMAssignmentAction,
                                     RHECMAttendance, RHECMAutomator, RHECMCertificateDownload,
                                     RHECMCertificates, RHECMCheckin, RHECMDeliverableToggle, RHECMEvaluate,
-                                    RHECMEventOverview, RHECMGuests, RHECMInvitations, RHECMLegacyImport,
+                                    RHECMEventOverview, RHECMFaculty, RHECMGuests, RHECMInvitations, RHECMLegacyImport,
+                                    RHECMArchiveExport, RHECMMessages, RHECMReports,
+                                    RHECMTransferExport,
                                     RHECMLetters, RHECMParticipants, RHECMProviders, RHECMTransferSheet)
 
 
@@ -32,10 +34,15 @@ blueprint.add_url_rule(f'{_event}/certificates/<int:certificate_id>.pdf', 'certi
                        RHECMCertificateDownload)
 blueprint.add_url_rule(f'{_event}/invitations', 'invitations', RHECMInvitations, methods=('GET', 'POST'))
 blueprint.add_url_rule(f'{_event}/invitations/letters', 'letters', RHECMLetters)
+blueprint.add_url_rule(f'{_event}/faculty', 'faculty', RHECMFaculty, methods=('GET', 'POST'))
+blueprint.add_url_rule(f'{_event}/messages', 'messages', RHECMMessages)
 blueprint.add_url_rule(f'{_event}/guests', 'guests', RHECMGuests, methods=('GET', 'POST'))
 blueprint.add_url_rule(f'{_event}/guests/transfer-sheet', 'transfer_sheet', RHECMTransferSheet)
+blueprint.add_url_rule(f'{_event}/guests/export.xlsx', 'transfer_export', RHECMTransferExport)
 
 blueprint.add_url_rule('/admin/ecm/providers', 'providers', RHECMProviders, methods=('GET', 'POST'))
+blueprint.add_url_rule('/admin/ecm/reports', 'reports', RHECMReports)
+blueprint.add_url_rule('/admin/ecm/export', 'archive_export', RHECMArchiveExport)
 blueprint.add_url_rule('/admin/ecm/import', 'legacy_import', RHECMLegacyImport, methods=('GET', 'POST'))
 blueprint.add_url_rule('/admin/ecm/automator', 'automator', RHECMAutomator, methods=('GET', 'POST'))
 

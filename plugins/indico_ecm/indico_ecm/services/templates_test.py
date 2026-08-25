@@ -78,9 +78,11 @@ def test_certificate_template_reports_credits_and_number():
 
 def test_graphic_brief_template_carries_the_palette():
     result = render_named('graphic_brief', {'event_name': 'Cardio Update', 'specialty': 'cardiovascular',
-                                            'rgb': '#1e40af', 'keywords': 'scompenso'})
+                                            'cmyk': 'C:60 M:0 Y:30 K:0', 'keywords': 'scompenso'})
     assert 'cardiovascular' in result['body']
-    assert '#1e40af' in result['body']
+    assert 'C:60 M:0 Y:30 K:0' in result['body']
+    # The brief says who converts to screen colours, instead of inventing them.
+    assert 'profilo colore' in result['body']
 
 
 def test_unknown_template_raises():
@@ -102,3 +104,41 @@ def test_template_can_be_rendered_without_escaping_when_the_body_is_plain_text()
 def test_document_templates_declare_their_context():
     assert DOCUMENT_TEMPLATES['invitation_letter']['path'].endswith('.docx')
     assert 'nomeOspedale' in DOCUMENT_TEMPLATES['invitation_letter']['context']
+    assert DOCUMENT_TEMPLATES['engagement_letter']['path'].endswith('.docx')
+    assert 'compenso_lettere' in DOCUMENT_TEMPLATES['engagement_letter']['context']
+
+
+def test_the_nume_upload_request_carries_the_figures_the_platform_asks_for():
+    result = render_named('nume_upload', {'event_name': 'Cardio Update', 'city': 'Bologna',
+                                          'access_code': '411727', 'credits': '9',
+                                          'participants': '80', 'agenas_code': '604-411727'})
+    assert result['subject'] == 'Richiesta Caricamento Evento su NUME: Cardio Update'
+    assert 'CODICE ACCESSO: 411727' in result['body']
+    assert 'CODICE AGENAS: 604-411727' in result['body']
+
+
+def test_the_hostess_request_names_how_many_are_needed():
+    result = render_named('hostess_request', {'event_name': 'Cardio Update', 'recipient': 'Alessandra'})
+    assert result['subject'] == 'Richiesta Hostess per Evento: Cardio Update'
+    assert 'Gentile Alessandra,' in result['body']
+    # The original asks for one hostess unless told otherwise.
+    assert 'di 1 hostess' in result['body']
+
+
+def test_the_speaker_invitation_never_mentions_the_engagement_letter():
+    # The letter only exists after the speaker accepts: naming it in the first
+    # email promises a document that has not been drawn up yet.
+    result = render_named('speaker_invitation', {'event_name': 'Cardio Update', 'role': 'Relatore',
+                                                 'salutation': 'Dott.ssa Laura Rossi',
+                                                 'sponsor': 'Acme', 'place': 'Bologna'})
+    assert result['subject'] == 'Invito a partecipare come Relatore: Cardio Update presso Bologna'
+    assert 'lettera di incarico' not in result['body'].lower()
+    # What travels with this email is the programme, not the letter.
+    assert 'In allegato troverà il programma scientifico proposto' in result['body']
+    assert 'codice fiscale' in result['body']
+
+
+@pytest.mark.parametrize('name', ('event_update_nume', 'event_update_graphics'))
+def test_an_update_with_nothing_changed_says_so(name):
+    result = render_named(name, {'event_name': 'Cardio Update'})
+    assert result['body'].count('Nessun Cambio') == 2
