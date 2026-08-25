@@ -68,6 +68,6 @@
         <p><strong>A:</strong> {{ request_email.to or '—' }}
            {% if request_email.cc %}<strong>CC:</strong> {{ request_email.cc | join(', ') }}{% endif %}</p>
         <p><strong>Oggetto:</strong> {{ request_email.subject }}</p>
-        <div style="border:1px solid #ddd;padding:1em;background:#fafafa">{{ request_email.body | safe }}</div>
+        <div class="i-box"><div class="i-box-content">{{ request_email.body | safe }}</div></div>
     {% endif %}
 {% endblock %}

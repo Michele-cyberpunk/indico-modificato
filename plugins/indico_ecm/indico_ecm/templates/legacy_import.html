@@ -6,6 +6,19 @@
 {% block content %}
     {{ admin_nav('ecm.legacy_import') }}
 
+    <div class="toolbar space-after">
+        <div class="group">
+            <a class="i-button" href="{{ url_for_plugin('ecm.archive_export') }}">
+                Esporta l'archivio in JSON
+            </a>
+        </div>
+    </div>
+
+    <div class="i-callout">
+        L'esportazione ha lo stesso formato che questa pagina legge: un archivio che nessuno
+        può reimportare è una copia, non un backup.
+    </div>
+
     <p>{% trans %}Carica l'esportazione JSON del gestionale precedente (eventi, stampa unione, promemoria).{% endtrans %}</p>
     <form method="POST" enctype="multipart/form-data">
         {{ csrf() }}
@@ -47,7 +60,7 @@
                 {% endfor %}
             </tbody>
         </table>
-        <p style="color:#666">
+        <p class="text-not-important">
             {% trans %}L'analisi non scrive nulla: serve a verificare l'archivio prima di importarlo.{% endtrans %}
         </p>
     {% endif %}

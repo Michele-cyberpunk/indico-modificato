@@ -9,10 +9,10 @@
     {% if not accreditation %}
         <div class="i-callout">{% trans %}Serve prima un dossier di accreditamento.{% endtrans %}</div>
     {% else %}
-        <form method="POST" action="{{ url_for_plugin('ecm.evaluate', event) }}" style="margin-bottom:1em">
+        <form method="POST" action="{{ url_for_plugin('ecm.evaluate', event) }}" class="i-form">
             {{ csrf() }}
             <button class="i-button highlight" type="submit">{% trans %}Rivaluta tutti{% endtrans %}</button>
-            <span style="margin-left:1em;color:#666">
+            <span class="text-not-important">
                 {% trans %}La valutazione non assegna nulla: produce proposte.{% endtrans %}
                 {% if program_minutes %}Programma accreditato: {{ program_minutes }} minuti.{% endif %}
             </span>
@@ -35,7 +35,7 @@
                                 {{ row.outcome.attended_minutes }}/{{ row.outcome.program_minutes }} min
                                 ({{ (row.outcome.attendance_ratio * 100) | round(1) }}%)
                             {% else %}—{% endif %}
-                            {% if row.open %}<br><span style="color:#c2410c">{{ row.open }} presenze aperte</span>{% endif %}
+                            {% if row.open %}<br><span class="i-label warning small">{{ row.open }} presenze aperte</span>{% endif %}
                         </td>
                         <td>{% if row.outcome and row.outcome.assessment_ratio is not none %}
                                 {{ (row.outcome.assessment_ratio * 100) | round(1) }}%
@@ -43,9 +43,9 @@
                         <td>
                             {% if row.outcome %}
                                 {% if row.outcome.eligible %}
-                                    <span style="color:#15803d">idoneo — {{ row.outcome.credits }} crediti</span>
+                                    <span class="i-label accept small">idoneo — {{ row.outcome.credits }} crediti</span>
                                 {% else %}
-                                    <span style="color:#b91c1c">non idoneo</span><br>
+                                    <span class="i-label danger small">non idoneo</span><br>
                                     <small>{{ row.outcome.reasons | map(attribute='value') | join(', ') }}</small>
                                 {% endif %}
                             {% else %}—{% endif %}

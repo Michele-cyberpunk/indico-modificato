@@ -13,7 +13,7 @@
         scartate in silenzio.{% endtrans %}
     </p>
 
-    <form method="POST" enctype="multipart/form-data" style="margin-bottom:2em">
+    <form method="POST" enctype="multipart/form-data" class="i-form">
         {{ csrf() }}
         <p><input type="file" name="list" accept=".csv,.txt,.xlsx,.xlsm,.docx,.pdf"></p>
         <p><textarea name="text" rows="6" cols="100"
@@ -63,13 +63,14 @@
     {% endif %}
 
     <h3>{% trans %}Navette{% endtrans %}
-        <small style="font-weight:normal">
+        <small class="text-not-important">
             <a href="{{ url_for_plugin('ecm.transfer_sheet', event) }}" target="_blank">foglio arrivi</a> ·
-            <a href="{{ url_for_plugin('ecm.transfer_sheet', event, direction='departure') }}" target="_blank">foglio partenze</a>
+            <a href="{{ url_for_plugin('ecm.transfer_sheet', event, direction='departure') }}" target="_blank">foglio partenze</a> ·
+            <a href="{{ url_for_plugin('ecm.transfer_export', event) }}">esporta in Excel</a>
         </small>
     </h3>
 
-    <form method="POST" style="margin-bottom:1em">
+    <form method="POST" class="i-form">
         {{ csrf() }}
         <input type="hidden" name="action" value="settings">
         {% trans %}Strategia{% endtrans %}
@@ -85,12 +86,12 @@
     {% for label, groups in [('Arrivi', arrivals), ('Partenze', departures)] %}
         <h4>{{ label }}</h4>
         {% for group in groups %}
-            <p style="margin-bottom:.2em">
+            <p>
                 <strong>{{ group.window }}</strong>
                 {% if config.strategy == 'vehicle' %}<em>veicolo {{ group.vehicle_number }}</em>{% endif %}
                 — {{ group.guests | length }} ospiti, {{ group.pax }} pax
             </p>
-            <table class="i-table-widget" style="margin-bottom:1em">
+            <table class="i-table-widget">
                 <tbody>
                     {% for guest in group.guests %}
                         <tr><td>{{ guest.full_name }}</td><td>{{ guest.phone }}</td>
@@ -115,7 +116,7 @@
                     <td>
                         {{ row.full_name or '—' }}
                         {% if not row.name_order_certain %}
-                            <form method="POST" style="display:inline">
+                            <form method="POST" class="inline-form">
                                 {{ csrf() }}
                                 <input type="hidden" name="action" value="swap">
                                 <input type="hidden" name="guest_id" value="{{ row.id }}">
@@ -135,7 +136,7 @@
                     <td>{{ row.diet_notes or '—' }}</td>
                     <td><small><code>{{ row.source_row }}</code></small></td>
                     <td>
-                        <form method="POST" style="display:inline">
+                        <form method="POST" class="inline-form">
                             {{ csrf() }}
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="guest_id" value="{{ row.id }}">

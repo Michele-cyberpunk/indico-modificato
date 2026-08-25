@@ -6,7 +6,7 @@
 {% block content %}
     {{ nav(event, 'ecm.invitations') }}
 
-    <form method="POST" enctype="multipart/form-data" style="margin-bottom:1.5em">
+    <form method="POST" enctype="multipart/form-data" class="i-form">
         {{ csrf() }}
         <input type="file" name="spreadsheet" accept=".csv,.xlsx,.xlsm" required>
         <label><input type="checkbox" name="replace" value="1"> sostituisci le righe esistenti</label>
@@ -34,7 +34,7 @@
                 {% if budget %}
                     — budget {{ budget }} €
                     {% if totals.total | float > budget | float %}
-                        <span style="color:#b91c1c">superato</span>
+                        <span class="i-label danger small">superato</span>
                     {% endif %}
                 {% endif %}
             </li>

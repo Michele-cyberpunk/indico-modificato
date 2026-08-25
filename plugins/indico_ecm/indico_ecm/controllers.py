@@ -14,12 +14,13 @@ and what has actually been granted. The difference between them is the work
 still to do.
 """
 
+import dataclasses
 import io
 import json
 from datetime import date
 from operator import itemgetter
 
-from flask import flash, jsonify, redirect, request, session
+from flask import flash, jsonify, redirect, request, session, url_for
 from werkzeug.exceptions import Forbidden, NotFound
 
 from indico.core.db import db
@@ -45,31 +46,53 @@ from indico_ecm.services import attendance as attendance_service
 from indico_ecm.services import automator as automator_service
 from indico_ecm.services import certificate_render, certificates as certificate_service
 from indico_ecm.services import eligibility as eligibility_service
+from indico_ecm.services import engagement_letter
+from indico_ecm.services import faculty as faculty_service
 from indico_ecm.services import guests as guest_service
+from indico_ecm.services import archive
+from indico_ecm.services import mail_draft
+from indico_ecm.services import statistics
+from indico_ecm.services import transfer_export
 from indico_ecm.services import invitations as invitation_service
 from indico_ecm.services.accreditation_mail import AccreditationRequest, build_email, missing_fields
 from indico_ecm.services.costs import event_totals, money
 from indico_ecm.services.deliverables import Deliverable, DeliverableState, checklist, readiness
 from indico_ecm.services.legacy_import import import_archive
 from indico_ecm.services.naming import folder_path
+from indico_ecm.services.templates import (DOCUMENT_TEMPLATES, MESSAGE_TEMPLATES, TemplateError,
+                                           get_template, preview, render_named)
 
 
-class WPECM(WPJinjaMixinPlugin, WPEventManagement):
+class _ECMStylesheet:
+    """Adds the plugin stylesheet to Indico's own.
+
+    The pages are built from Indico's classes; this only carries the few rules
+    that have no equivalent there. The blueprint already serves the plugin's
+    `static` folder, so no asset bundle is involved.
+    """
+
+    def _get_head_content(self):
+        href = url_for('plugin_ecm.static', filename='ecm.css')
+        link = f'<link rel="stylesheet" type="text/css" href="{href}">'
+        return f'{super()._get_head_content()}{link}'
+
+
+class WPECM(_ECMStylesheet, WPJinjaMixinPlugin, WPEventManagement):
     sidemenu_option = 'ecm'
 
 
-class WPECMAdmin(WPJinjaMixinPlugin, WPAdmin):
+class WPECMAdmin(_ECMStylesheet, WPJinjaMixinPlugin, WPAdmin):
     sidemenu_option = 'ecm_admin'
 
 
-class WPCertificateVerify(WPJinjaMixinPlugin, WPDecorated):
+class WPCertificateVerify(_ECMStylesheet, WPJinjaMixinPlugin, WPDecorated):
     """The public verification page: no menu, no login."""
 
     def _get_body(self, params):
         return self._get_page_content(params)
 
 
-class WPECMSheet(WPJinjaMixinPlugin, WPDecorated):
+class WPECMSheet(_ECMStylesheet, WPJinjaMixinPlugin, WPDecorated):
     """A sheet meant to be printed and handed to a driver: no menu, no chrome."""
 
     def _get_body(self, params):
@@ -83,6 +106,18 @@ class RHECMEventBase(RHManageEventBase):
         RHManageEventBase._process_args(self)
         self.accreditation = EventAccreditation.query.filter_by(event_id=self.event.id).first()
         self.operations = EventOperations.query.filter_by(event_id=self.event.id).first()
+
+    def _sponsor(self):
+        """The company whose unconditional contribution funds the event.
+
+        It is written on the mail-merge rows, which is where this platform keeps
+        it; the CRM holds the company itself, and reading it from here would tie
+        the two plugins together for one line of an email.
+        """
+        row = (InvitationBatch.query
+               .filter(InvitationBatch.event_id == self.event.id, InvitationBatch.sponsor != '')
+               .first())
+        return row.sponsor if row else ''
 
     def _ensure_operations(self):
         if self.operations is None:
@@ -408,6 +443,182 @@ class RHECMInvitations(RHECMEventBase):
         return redirect(url_for_plugin('ecm.invitations', self.event))
 
 
+class RHECMMessages(RHECMEventBase):
+    """Every message the platform can write, filled in with this event.
+
+    The templates were reachable only through an agent, and the agents are off
+    until someone turns them on: in practice most of them could not be seen at
+    all. They are shown here with the event's own data, and what a template
+    still needs is named rather than left blank.
+    """
+
+    def _hotel_services_html(self):
+        """The hotel brief, deduced from the programme of this event.
+
+        The same deduction the agent tool does: the timetable titles plus the
+        description are what a sponsor writes the programme in, and the
+        keywords decide what the hotel has to prepare.
+        """
+        from indico_ecm.services.attendance import event_session_blocks
+        from indico_ecm.services.hotel import brief_lines, deduce
+
+        event = self.event
+        programme_text = '\n'.join(filter(None, ((block.full_title or '')
+                                                 for block in event_session_blocks(event))))
+        source = f'{event.title}\n{event.description or ""}\n{programme_text}'.strip()
+        services = deduce(source,
+                          start_time=(event.start_dt.strftime('%H:%M') if event.start_dt else ''),
+                          end_time=(event.end_dt.strftime('%H:%M') if event.end_dt else ''))
+        return '<br>' + '<br>'.join(brief_lines(services))
+
+    def _context(self):
+        event = self.event
+        accreditation = self.accreditation
+        operations = self.operations
+        date_text = event.start_dt.strftime('%d/%m/%Y') if event.start_dt else ''
+        code = (operations.event_code if operations else '') or ''
+        return {
+            'event_name': event.title,
+            'event_code': code,
+            'event_date': date_text,
+            'date_text': date_text,
+            'event_place': event.venue_name or '',
+            'place': event.venue_name or '',
+            'city': event.venue_name or '',
+            'hotel_name': event.venue_name or '',
+            'access_code': ''.join(char for char in code if char.isdigit()),
+            'credits': str(accreditation.credits) if accreditation and accreditation.credits else '',
+            'participants': (str(accreditation.max_participants)
+                             if accreditation and accreditation.max_participants else ''),
+            'agenas_code': accreditation.activity_code if accreditation else '',
+            'start_time': event.start_dt.strftime('%H:%M') if event.start_dt else '',
+            'end_time': event.end_dt.strftime('%H:%M') if event.end_dt else '',
+            'event_type': (accreditation.activity_format.title
+                           if accreditation and accreditation.activity_format else ''),
+            'sender_name': session.user.full_name if session.user else '',
+            'sponsor': self._sponsor(),
+            'services': self._hotel_services_html(),
+        }
+        context = self._context()
+        wanted = request.args.get('draft')
+        if wanted:
+            return self._download_draft(wanted, context)
+        messages = [preview(template, context)
+                    for _, template in sorted(MESSAGE_TEMPLATES.items())]
+        catalogue = {name: template for name, template in MESSAGE_TEMPLATES.items()}
+        return WPECM.render_template('messages.html', self.event, 'ecm',
+                                     messages=messages, catalogue=catalogue,
+                                     documents=DOCUMENT_TEMPLATES)
+
+    def _download_draft(self, name, context):
+        """The message as a `.eml`, which the mail client opens as a draft.
+
+        Nothing is sent: no outgoing server is configured, and this is how the
+        previous event manager worked too — it wrote the file and let the
+        default client open it, so a person reads the message before it leaves.
+        """
+        try:
+            template = get_template(name)
+        except TemplateError:
+            raise NotFound from None
+        message = preview(template, context)
+        if message['missing']:
+            flash(_('Mancano dei valori: {fields}.').format(fields=', '.join(message['missing'])),
+                  'error')
+            return redirect(url_for_plugin('ecm.messages', self.event))
+        filename, content = mail_draft.from_message(
+            message, sender=session.user.email if session.user else '')
+        return send_file(filename, io.BytesIO(content), 'message/rfc822', inline=False)
+
+
+class RHECMFaculty(RHECMEventBase):
+    """The faculty of the event, and the two documents each speaker receives.
+
+    The people come from Indico. What the paperwork adds — role, fee, letter
+    number, tax code — is answered here and used straight away: a fee typed to
+    print one letter is not a record worth keeping, and storing it would mean a
+    table that nothing else reads.
+    """
+
+    def _speakers(self):
+        """The faculty, with the answers given on the form applied on top."""
+        people = []
+        for speaker in faculty_service.read_faculty(self.event):
+            key = speaker.person_id
+            gender = request.form.get(f'gender-{key}', '')
+            people.append(dataclasses.replace(
+                speaker,
+                gender=gender if gender in ('M', 'F') else ('' if gender == 'unknown' else speaker.gender),
+                title=request.form.get(f'title-{key}') or speaker.title,
+                role=request.form.get(f'role-{key}') or speaker.role,
+                fee=request.form.get(f'fee-{key}', ''),
+                tax_code=request.form.get(f'tax_code-{key}', ''),
+                birth_date=request.form.get(f'birth_date-{key}', ''),
+                letter_number=request.form.get(f'letter_number-{key}', ''),
+                has_vat_number=bool(request.form.get(f'vat-{key}')),
+            ))
+        return people
+
+    def _context_args(self):
+        accreditation = self.accreditation
+        return {
+            'activity_code': accreditation.activity_code if accreditation else '',
+            'format_label': (accreditation.activity_format.title
+                             if accreditation and accreditation.activity_format else ''),
+            'project_code': self.operations.event_code if self.operations else '',
+        }
+
+    def _render(self, speakers=None, invitation=None):
+        speakers = speakers if speakers is not None else faculty_service.read_faculty(self.event)
+        return WPECM.render_template(
+            'faculty.html', self.event, 'ecm', speakers=speakers, invitation=invitation,
+            titles=engagement_letter.TITLE_CHOICES,
+            missing=faculty_service.check_template(speakers, event=self.event,
+                                                   **self._context_args()))
+
+    def _process_GET(self):
+        return self._render()
+
+    def _process_POST(self):
+        speakers = self._speakers()
+        if not speakers:
+            flash(_('Questo evento non ha ancora relatori: aggiungili da Indico.'), 'error')
+            return redirect(url_for_plugin('ecm.faculty', self.event))
+
+        if request.form.get('action') == 'invite':
+            return self._render(speakers, invitation=self._draft_invitations(speakers))
+
+        count, archive = faculty_service.render_batch(speakers, event=self.event,
+                                                      **self._context_args())
+        name = f'lettere-incarico-{self.event.id}.zip'
+        return send_file(name, io.BytesIO(archive), 'application/zip', inline=False)
+
+    def _draft_invitations(self, speakers):
+        """The invitation email for each speaker, ready to be copied out.
+
+        Drafted rather than sent: no outgoing channel is configured, and a page
+        that says "sent" without sending would be worse than one that hands the
+        text over.
+        """
+        drafts = []
+        for speaker in speakers:
+            abbreviation = engagement_letter.title_abbreviation(
+                faculty_service.resolve_gender(speaker), speaker.title)
+            drafts.append({
+                'speaker': speaker,
+                'message': render_named('speaker_invitation', {
+                    'event_name': self.event.title,
+                    'role': speaker.role,
+                    'salutation': f'{abbreviation} {speaker.full_name}'.strip(),
+                    'sponsor': self._sponsor(),
+                    'date_text': self.event.start_dt.strftime('%d/%m/%Y') if self.event.start_dt else '',
+                    'place': self.event.venue_name or '',
+                    'sender_name': session.user.full_name if session.user else '',
+                }),
+            })
+        return drafts
+
+
 class RHECMLetters(RHECMEventBase):
     """Generate every invitation letter as one archive."""
 
@@ -499,6 +710,34 @@ class RHECMGuests(RHECMEventBase):
         return self._render(rejected=rejected)
 
 
+class RHECMTransferExport(RHECMEventBase):
+    """The guest list as the spreadsheet the office forwards.
+
+    Same two sheets and same columns as the previous event manager, plus one
+    with the itineraries: a driver reads one block per run.
+    """
+
+    def _process(self):
+        rows = self.event.ecm_guests.order_by(EventGuest.last_name, EventGuest.first_name).all()
+        guests = [row.to_guest() for row in rows]
+        if not guests:
+            flash(_('Nessun ospite in lista.'), 'error')
+            return redirect(url_for_plugin('ecm.guests', self.event))
+        config = guest_service.TransferConfig(
+            strategy=(self.operations.transfer_strategy if self.operations else None) or 'vehicle',
+            window=(self.operations.transfer_window if self.operations else None) or 60,
+            seats_per_vehicle=(self.operations.seats_per_vehicle if self.operations else None) or 8)
+        content = transfer_export.build_workbook(
+            guests,
+            arrivals=guest_service.group_transfers(guests, config, arrival=True),
+            departures=guest_service.group_transfers(guests, config, arrival=False),
+            event_date=self.event.start_dt.date() if self.event.start_dt else None,
+            return_date=self.event.end_dt.date() if self.event.end_dt else None)
+        return send_file(transfer_export.filename_for(self.event.id), io.BytesIO(content),
+                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                         inline=False)
+
+
 class RHECMTransferSheet(RHECMEventBase):
     """The shuttle sheet the driver is handed, as a printable page."""
 
@@ -573,6 +812,108 @@ class RHCertificateVerify(RH):
                 return jsonify(valid=False, reason='unknown token'), 404
             return jsonify(**result)
         return WPCertificateVerify.render_template('verify.html', result=result)
+
+
+class RHECMReports(RHAdminBase):
+    """How the year is going, across every accredited event.
+
+    The figures are the ones the previous event manager reported — events,
+    participants, credits, how far the preparation got, and which events have
+    something late — computed over the platform's own records.
+    """
+
+    def _records(self):
+        today = date.today()
+        records = []
+        for accreditation in EventAccreditation.query.all():
+            event = accreditation.event
+            if event is None or event.is_deleted:
+                continue
+            states = states_for_event(event)
+            event_date = event.start_dt.date() if event.start_dt else None
+            late = sum(1 for status in checklist(states, event_date, today)
+                       if status.needs_attention)
+            issued = (Certificate.query
+                      .join(CreditAssignment)
+                      .filter(CreditAssignment.event_id == event.id,
+                              Certificate.state == CertificateState.issued)
+                      .count())
+            records.append(statistics.EventRecord(
+                id=event.id,
+                title=event.title,
+                day=event_date,
+                city=event.venue_name or '',
+                credits=float(accreditation.credits or 0),
+                participants=int(accreditation.max_participants or 0),
+                readiness=readiness(states),
+                late=late,
+                certificates=issued,
+            ))
+        return records
+
+    def _process(self):
+        report = statistics.build(self._records())
+        if request.args.get('format') == 'xlsx':
+            content = statistics.as_xlsx(report)
+            return send_file(f'report-ecm-{date.today():%Y%m%d}.xlsx', io.BytesIO(content),
+                             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                             inline=False)
+        return WPECMAdmin.render_template('reports.html', 'ecm_admin', report=report)
+
+
+class RHECMArchiveExport(RHAdminBase):
+    """The whole archive as JSON, in the shape the importer reads back.
+
+    Round-trip on purpose: an export nobody can import is a copy, not a backup.
+    """
+
+    def _process(self):
+        events = []
+        for accreditation in EventAccreditation.query.all():
+            event = accreditation.event
+            if event is None or event.is_deleted:
+                continue
+            operations = EventOperations.query.filter_by(event_id=event.id).first()
+            events.append({
+                'title': event.title,
+                'event_code': operations.event_code if operations else '',
+                'start_date': event.start_dt.date() if event.start_dt else None,
+                'end_date': event.end_dt.date() if event.end_dt else None,
+                'city': event.venue_name or '',
+                'venue': event.venue_name or '',
+                # str(): the enum title is a lazily translated string, and the
+                # archive is JSON.
+                'activity_format': (str(accreditation.activity_format.title)
+                                    if accreditation.activity_format else ''),
+                # str(): credits is numeric, and the archive is JSON.
+                'credits': str(accreditation.credits) if accreditation.credits else '',
+                'max_participants': accreditation.max_participants or '',
+                'activity_code': accreditation.activity_code or '',
+                'folder_name': operations.folder_name if operations else '',
+                'time_range': (f"{event.start_dt:%H:%M} - {event.end_dt:%H:%M}"
+                               if event.start_dt and event.end_dt else ''),
+                'deliverables': states_for_event(event),
+                'faculty': [{'name': link.full_name, 'email': link.email or ''}
+                            for link in event.person_links],
+            })
+
+        invitations = [{
+            'hospital': row.hospital, 'recipient': row.recipient,
+            'recipient_email': row.recipient_email, 'cc_email': row.cc_email,
+            'department': row.department, 'specialty': row.specialty, 'role': row.role,
+            'physician_count': row.physician_count, 'sponsor': row.sponsor,
+            'notes': row.notes, 'costs': row.costs,
+        } for row in InvitationBatch.query.all()]
+
+        reminders = [{
+            'title': row.title, 'remind_on': row.remind_on, 'notes': row.notes,
+            'event_title': row.event.title if row.event else '',
+        } for row in SpecialReminder.query.all()]
+
+        content = archive.dumps(archive.build(events=events, invitations=invitations,
+                                              reminders=reminders))
+        return send_file(archive.filename_for(), io.BytesIO(content), 'application/json',
+                         inline=False)
 
 
 class RHECMLegacyImport(RHAdminBase):

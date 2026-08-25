@@ -8,12 +8,12 @@
 
     <p>{% trans %}Assegnazioni approvate in attesa di attestato{% endtrans %}: <strong>{{ approved }}</strong></p>
 
-    <form method="POST" style="margin-bottom:1.5em">
+    <form method="POST" class="i-form">
         {{ csrf() }}
         <button class="i-button highlight" type="submit" {{ 'disabled' if not approved }}>
             {% trans %}Emetti gli attestati mancanti{% endtrans %}
         </button>
-        <span style="margin-left:1em;color:#666">
+        <span class="text-not-important">
             {% trans %}Vengono emessi solo per assegnazioni già approvate da una persona.{% endtrans %}
         </span>
     </form>

@@ -36,9 +36,9 @@
                     <td>{{ row.registration.first_name }} {{ row.registration.last_name }}</td>
                     <td>{{ row.minutes | round | int }}</td>
                     <td>{{ row.intervals }}</td>
-                    <td>{% if row.open %}<span style="color:#c2410c">{{ row.open }}</span>{% else %}0{% endif %}</td>
+                    <td>{% if row.open %}<span class="i-label warning small">{{ row.open }}</span>{% else %}0{% endif %}</td>
                     <td>
-                        <form method="POST" action="{{ url_for_plugin('ecm.checkin', event) }}" style="display:inline">
+                        <form method="POST" action="{{ url_for_plugin('ecm.checkin', event) }}" class="inline-form">
                             {{ csrf() }}
                             <input type="hidden" name="registration_id" value="{{ row.registration.id }}">
                             <select name="session_block_id">

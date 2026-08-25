@@ -1,21 +1,51 @@
-<div style="max-width:36em;margin:3em auto;font-family:sans-serif">
+{# Public verification of a certificate: no login, no personal data. #}
+{% from 'ecm:_macros.html' import state_label %}
+<div class="fixed-width-standalone-text-page">
+    <div class="page-content">
     {% if not result %}
-        <h2 style="color:#b91c1c">{% trans %}Attestato non trovato{% endtrans %}</h2>
+        <div class="error-message-box">
+            <span class="icon"></span>
+            <div class="message-text">{% trans %}Attestato non trovato{% endtrans %}</div>
+        </div>
         <p>{% trans %}Il codice di verifica non corrisponde ad alcun attestato emesso.{% endtrans %}</p>
     {% elif result.valid %}
-        <h2 style="color:#15803d">{% trans %}Attestato valido{% endtrans %}</h2>
-        <dl>
-            <dt><strong>Numero</strong></dt><dd>{{ result.number }}</dd>
-            <dt><strong>Crediti ECM</strong></dt><dd>{{ result.credits }}</dd>
-            <dt><strong>Evento accreditato</strong></dt><dd>{{ result.activity_code or '—' }}</dd>
-            <dt><strong>Emesso il</strong></dt><dd>{{ result.issued_dt[:10] if result.issued_dt else '—' }}</dd>
-            <dt><strong>Regole applicate</strong></dt><dd>{{ result.rule_version }}</dd>
-        </dl>
-        <p style="color:#666;font-size:.9em">
+        <div class="success-message-box">
+            <span class="icon"></span>
+            <div class="message-text">{% trans %}Attestato valido{% endtrans %}</div>
+        </div>
+        <table class="i-table-widget">
+            <tbody>
+                <tr>
+                    <td>{% trans %}Numero{% endtrans %}</td>
+                    <td>{{ result.number }}</td>
+                </tr>
+                <tr>
+                    <td>{% trans %}Crediti ECM{% endtrans %}</td>
+                    <td>{{ result.credits }}</td>
+                </tr>
+                <tr>
+                    <td>{% trans %}Evento accreditato{% endtrans %}</td>
+                    <td>{{ result.activity_code or '—' }}</td>
+                </tr>
+                <tr>
+                    <td>{% trans %}Emesso il{% endtrans %}</td>
+                    <td>{{ result.issued_dt[:10] if result.issued_dt else '—' }}</td>
+                </tr>
+                <tr>
+                    <td>{% trans %}Regole applicate{% endtrans %}</td>
+                    <td>{{ result.rule_version }}</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="i-callout">
             {% trans %}Per tutela dei dati personali questa pagina non riporta il nominativo.{% endtrans %}
-        </p>
+        </div>
     {% else %}
-        <h2 style="color:#b91c1c">{% trans %}Attestato non valido{% endtrans %}</h2>
-        <p>{% trans %}Stato{% endtrans %}: {{ result.state }} — {{ result.number }}</p>
+        <div class="error-message-box">
+            <span class="icon"></span>
+            <div class="message-text">{% trans %}Attestato non valido{% endtrans %}</div>
+        </div>
+        <p>{% trans %}Stato{% endtrans %}: {{ state_label(result.state) }} — {{ result.number }}</p>
     {% endif %}
+    </div>
 </div>
