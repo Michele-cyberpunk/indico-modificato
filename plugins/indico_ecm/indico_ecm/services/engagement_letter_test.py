@@ -126,7 +126,7 @@ def test_the_elision_only_applies_to_one_and_eight():
     ('non un numero', 0),
 ))
 def test_an_amount_is_read_in_italian_notation(written, expected):
-    assert float(parse_amount(written)) == expected
+    assert float(parse_amount(written)) == pytest.approx(expected)
 
 
 def test_an_amount_is_written_in_italian_notation():

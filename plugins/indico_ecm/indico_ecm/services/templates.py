@@ -291,7 +291,8 @@ EVENT_UPDATE_GRAPHICS = MessageTemplate(
 HOTEL_QUOTE = MessageTemplate(
     name='hotel_quote',
     description="Richiesta di disponibilità e preventivo all'albergo che ospita l'evento.",
-    subject='Richiesta disponibilità e preventivo – Evento ECM "{event_name}" presso {hotel_name} ({date_text})',
+    subject=('Richiesta disponibilità e preventivo \u2013 Evento ECM "{event_name}" '
+             'presso {hotel_name} ({date_text})'),
     body=('<p>Buongiorno,</p>'
           "<p>stiamo organizzando l'evento medico <strong>{event_name}</strong> e vorremmo "
           'chiedervi gentilmente la vostra disponibilità per le seguenti date: {date_text}.</p>'

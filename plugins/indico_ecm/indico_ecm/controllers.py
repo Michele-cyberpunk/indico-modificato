@@ -115,7 +115,8 @@ class RHECMEventBase(RHManageEventBase):
         the two plugins together for one line of an email.
         """
         row = (InvitationBatch.query
-               .filter(InvitationBatch.event_id == self.event.id, InvitationBatch.sponsor != '')
+               .filter(InvitationBatch.event_id == self.event.id,
+                       InvitationBatch.sponsor != '')  # noqa: PLC1901 — SQL, not truthiness
                .first())
         return row.sponsor if row else ''
 
@@ -590,7 +591,7 @@ class RHECMFaculty(RHECMEventBase):
         if request.form.get('action') == 'invite':
             return self._render(speakers, invitation=self._draft_invitations(speakers))
 
-        count, archive = faculty_service.render_batch(speakers, event=self.event,
+        _count, archive = faculty_service.render_batch(speakers, event=self.event,
                                                       **self._context_args())
         name = f'lettere-incarico-{self.event.id}.zip'
         return send_file(name, io.BytesIO(archive), 'application/zip', inline=False)

@@ -45,7 +45,7 @@ NUMERIC_DATE_RE = re.compile(r'\b(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}-\d{2}-\d
 
 #: `dal 15 al 16 ottobre 2026`, `19 e 20 febbraio 2026`, `15-16 ottobre 2026`
 DAY_RANGE_RE = re.compile(
-    rf'\b(?:dal\s+)?(\d{{1,2}})\s*(?:al|e|-|–)\s*(\d{{1,2}})\s+({_MONTH_ALT})\b(?:\s+(\d{{4}}))?',
+    rf'\b(?:dal\s+)?(\d{{1,2}})\s*(?:al|e|-|\u2013)\s*(\d{{1,2}})\s+({_MONTH_ALT})\b(?:\s+(\d{{4}}))?',
     re.IGNORECASE)
 
 TIME_RE = re.compile(r'\b([01]?\d|2[0-3])[:.]([0-5]\d)\b')
@@ -68,18 +68,18 @@ SECTION_HEADINGS = frozenset({
 })
 
 #: `Etichetta: valore`. Only a colon: an en dash separates a role from a
-#: name (`Nefrologa – Dott.ssa Melania Trabucchi`), and reading that as a
+#: name (`Nefrologa - Dott.ssa Melania Trabucchi`, with an en dash), and reading that as a
 #: label lost the speaker.
 LABEL_RE = re.compile(r'^\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s.\'/°]{2,40}?)\s*:\s*(.*)$')
 
-_NAME_TOKEN = r"[A-ZÀ-Ú][\w'’À-ú.-]*"
+_NAME_TOKEN = r"[A-ZÀ-Ú][\w'\u2019À-ú.-]*"  # noqa: S105 — a regex, not a credential
 _PARTICLE = r"(?:de(?:gli|lla|llo|lle|l|i|n|r)?|di|da|dal|del|della|van|von|ten|ter|la|lo|d')"
 TITLE_RE = re.compile(r'^(?:dott\.?ssa|dott\.?|dr\.?ssa|dr\.?|prof\.?ssa|prof\.?|sig\.?ra|sig\.?)\s+',
                       re.IGNORECASE)
 NAME_RE = re.compile(rf'^{_NAME_TOKEN}(?:\s+(?:{_NAME_TOKEN}|{_PARTICLE})){{1,3}}$')
 
 #: A speaker line may put the role before the name: `Cardiologo - Mario Rossi`
-ROLE_SEPARATOR_RE = re.compile(r'\s+[-–—]\s+')
+ROLE_SEPARATOR_RE = re.compile(r'\s+[-\u2013—]\s+')
 
 #: Labels that introduce a person rather than a fact
 PERSON_LABELS = ('responsabile scientifico', 'responsabile', 'faculty', 'relatori', 'relatore',
@@ -159,7 +159,7 @@ def looks_like_programme(text):
     for line in _lines(text):
         if HEADER_RE.match(line):
             return True
-        label, _ = _label_of(line)
+        label, _value = _label_of(line)
         if label in PROGRAMME_LABELS:
             return True
     return False
@@ -291,7 +291,8 @@ def _parse_numeric(raw):
 # --- venue, credits, participants, times -------------------------------------
 
 #: `04100 - Latina (LT)` or `Latina (LT)` at the end of an address
-CITY_WITH_CAP_RE = re.compile(r'\b\d{5}\s*[-–]?\s*([A-ZÀ-Ú][\w\'’À-ú.-]*(?:\s+[A-ZÀ-Ú][\w\'’À-ú.-]*)?)')
+CITY_WITH_CAP_RE = re.compile(
+    r'\b\d{5}\s*[-\u2013]?\s*([A-ZÀ-Ú][\w\'\u2019À-ú.-]*(?:\s+[A-ZÀ-Ú][\w\'\u2019À-ú.-]*)?)')
 PROVINCE_RE = re.compile(r'\(([A-Z]{2})\)')
 
 
@@ -420,7 +421,7 @@ def find_people(text):
         if is_shouting(stripped):
             continue
 
-        role, _, remainder = _split_role(stripped)
+        role, _matched, remainder = _split_role(stripped)
         if role:
             add(_person_from(remainder, role=role, source=stripped))
             continue

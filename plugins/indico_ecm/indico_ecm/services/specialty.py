@@ -111,7 +111,7 @@ VENUE_HINTS = ('hotel', 'via ', 'palazzo')
 
 #: The line a Progetto Formativo uses to declare the format, e.g. "Tipologia: RES"
 DECLARED_FORMAT_RE = re.compile(
-    r'(?:tipologia|modalit[àa]|tipo\s+evento|tipo\s+di\s+evento)\s*[:\-–]\s*(.+)',
+    r'(?:tipologia|modalit[àa]|tipo\s+evento|tipo\s+di\s+evento)\s*[:\-\u2013]\s*(.+)',
     re.IGNORECASE)
 
 #: Ordered as in the original `mapTipoEvento`, with the word boundaries it used.

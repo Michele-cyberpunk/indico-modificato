@@ -44,7 +44,7 @@ PROGRAMMA SCIENTIFICO
 10:00\tPrima relazione sul tema in oggetto
 \tCardiologo - Ippolito Sfregacci
 10:30\tSeconda relazione sul tema in oggetto
-\tNefrologa – Dott.ssa Melania Trabucchi
+\tNefrologa \u2013 Dott.ssa Melania Trabucchi
 11:00\tPERCORSO GRUPPO DI MIGLIORAMENTO
 11:30\tChiusura dell'incontro'''
 
@@ -134,7 +134,7 @@ def test_an_italian_date_is_read():
     ('Data: 15-16 ottobre 2026', date(2026, 10, 15), date(2026, 10, 16)),
 ))
 def test_the_three_forms_of_a_range_are_read(text, first, last):
-    start, end, _ = find_dates(text)
+    start, end, _year = find_dates(text)
     assert (start, end) == (first, last)
 
 
@@ -150,12 +150,12 @@ def test_a_document_without_a_date_says_so():
 # --- venue, credits, participants, times -------------------------------------
 
 def test_the_city_is_read_from_the_postcode():
-    venue, city, province, _ = find_venue('Sede: Hotel Europa, 04100 - Latina (LT)')
+    venue, city, province, _rest = find_venue('Sede: Hotel Europa, 04100 - Latina (LT)')
     assert (venue, city, province) == ('Hotel Europa', 'Latina', 'LT')
 
 
 def test_the_city_is_read_from_the_tail_when_there_is_no_postcode():
-    venue, city, _, _ = find_venue('Sede: Centro Congressi, Milano')
+    venue, city, _province, _rest = find_venue('Sede: Centro Congressi, Milano')
     assert (venue, city) == ('Centro Congressi', 'Milano')
 
 

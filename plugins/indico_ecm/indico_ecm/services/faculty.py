@@ -64,7 +64,7 @@ def read_faculty(event):
         name = link.full_name
         title, gender = 'none', ''
         if raw_title:
-            _, title, gender = engagement_letter.split_title(f'{raw_title} {name}')
+            _name, title, gender = engagement_letter.split_title(f'{raw_title} {name}')
         else:
             name, title, gender = engagement_letter.split_title(name)
         people.append(Speaker(
@@ -133,7 +133,7 @@ def _vat_note(speaker, figures):
     if not figures.has_fee:
         return ''
     if speaker.has_vat_number:
-        return (f'Importo soggetto a ritenuta d’acconto del 20% '
+        return (f'Importo soggetto a ritenuta d\u2019acconto del 20% '
                 f'(€ {figures.withholding}), netto € {figures.net_total}.')
     return f'Compenso lordo € {figures.fee}.'
 

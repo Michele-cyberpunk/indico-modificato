@@ -183,7 +183,7 @@ def _integer_in_words(value):
 
 def parse_amount(value):
     """Read an amount written as a number or in Italian notation (`1.234,50`)."""
-    if value is None or value == '':
+    if value is None or not str(value).strip():
         return Decimal(0)
     if isinstance(value, Decimal):
         return value
@@ -204,7 +204,7 @@ def format_amount(value):
 
 def amount_in_words(value):
     """`800` becomes `Ottocento,00`: the units in words, the cents in figures."""
-    if value is None or value == '':
+    if value is None or not str(value).strip():
         return ''
     amount = parse_amount(value)
     whole = int(abs(amount))
