@@ -52,7 +52,7 @@ CAPABILITIES = (
 )
 
 CAPABILITIES = (*CAPABILITIES, Capability(
-    setting='model_provider',
+    setting='model_providers',
     label='Modello linguistico',
     gives=('la prosa di una lettera o di un brief a partire dai dati che la piattaforma ha già. '
            'Non decide mai un valore regolato: crediti, minuti e numeri di attestato restano del '
@@ -77,7 +77,7 @@ def current(settings=None):
             value = settings.get(capability.setting)
         except Exception:  # an unreadable setting is "off", not a crash
             value = None
-        pairs.append((capability, bool(value and str(value).strip())))
+        pairs.append((capability, _is_on(capability, value)))
     return tuple(pairs)
 
 
@@ -137,3 +137,16 @@ def describe(pairs):
 
 def markdown(settings=None):
     return describe(current(settings))
+
+
+def _is_on(capability, value):
+    """Whether a capability is usable, not merely filled in.
+
+    The models setting holds rows, so "configured" means at least one row of the
+    right kind is switched on — a list with everything disabled is off.
+    """
+    if capability.setting == 'model_providers':
+        from indico_agents.runtime import model_registry
+
+        return bool(model_registry.for_kind(model_registry.parse(value), model_registry.ModelKind.text))
+    return bool(value and str(value).strip())

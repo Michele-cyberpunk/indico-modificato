@@ -25,13 +25,6 @@ class AgentsSettingsForm(IndicoForm):
                               description=_('Quanti task il dispatcher avvia a ogni minuto.'))
     max_cost_cents_per_event = IntegerField(_('Budget per evento (centesimi)'), [NumberRange(min=0)],
                                             description=_('Tetto di spesa complessivo degli agenti su un evento.'))
-    model_provider = StringField(_('Fornitore del modello'),
-                                 description=_('Nome di un adapter installato. Vuoto significa nessun '
-                                               'modello: gli agenti restano deterministici e gli '
-                                               'strumenti che redigono testo rispondono "non '
-                                               'configurato". I crediti non passano mai da un modello.'))
-    model_name = StringField(_('Modello'),
-                             description=_('Usato solo dagli agenti che redigono testo.'))
     egress_allowlist = StringField(_('Destinazioni consentite'),
                                    description=_('Host separati da virgola che gli agenti possono '
                                                  'raggiungere. Vuoto significa nessuna uscita: un host '
@@ -54,10 +47,9 @@ class AgentsPlugin(IndicoPlugin):
         'enabled': False,
         'batch_size': 10,
         'max_cost_cents_per_event': 0,
-        'model_name': '',
         'research_provider': '',
         'registry_provider': '',
-        'model_provider': '',
+        # models are configured as rows on /admin/agents/models, not here
         'model_providers': '',
         'egress_allowlist': '',
     }

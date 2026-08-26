@@ -107,36 +107,54 @@ class Usage:
         self.by_prompt[key] = self.by_prompt.get(key, 0) + 1
 
 
-def resolve(settings, allowlist=None):
-    """The provider this install is configured to use.
+def configured_models(settings):
+    """The rows the Models page saved."""
+    from indico_agents.runtime import model_registry
+
+    return model_registry.parse(settings.get('model_providers'))
+
+
+def resolve(settings, kind='text', allowlist=None):
+    """The model this install would use for work of `kind`.
+
+    Reads the same rows the Models page writes — there is one place a model is
+    configured, and a screen that wrote somewhere the runtime never looked would
+    be worse than no screen at all.
 
     Raises `LLMUnavailable` rather than returning None: every caller has to deal
     with the absence, and an exception is harder to forget than a null.
     """
-    from indico_agents.runtime.egress import DENY_ALL, EgressDenied
+    from indico_agents.runtime import model_registry
+    from indico_agents.runtime.egress import EgressDenied, build
 
-    name = (settings.get('model_provider') or '').strip()
-    if not name:
+    entries = configured_models(settings)
+    entry = model_registry.default_for(entries, kind)
+    if entry is None:
+        label = model_registry.ModelKind(kind).label
         raise LLMUnavailable(
-            'Nessun modello configurato su questo impianto. Non è un errore e riprovare non '
-            'serve: scrivi il testo dai dati che hai, oppure lascia il campo alla persona.')
-    factory = _PROVIDERS.get(name)
+            f'Nessun modello per {label} è configurato e attivo su questo impianto. Non è un '
+            'errore e riprovare non serve: scrivi il testo dai dati che hai, oppure lascia il '
+            'campo alla persona.')
+    factory = _PROVIDERS.get(entry.adapter)
     if factory is None:
         raise LLMUnavailable(
-            f'Il fornitore «{name}» non ha un adapter installato. Disponibili: '
-            f'{", ".join(available_providers()) or "nessuno"}.')
+            f'Il modello «{entry.label}» è configurato ma il suo adapter non è installato. '
+            f'Disponibili: {", ".join(available_providers()) or "nessuno"}.')
     provider = factory(settings)
-    host = getattr(provider, 'host', '')
+    host = entry.host or getattr(provider, 'host', '')
     if host:
+        # the models' own hosts are always allowed: they were configured on the
+        # same page, and requiring them twice only produces a call that fails last
+        reachable = allowlist if allowlist is not None else build(model_registry.hosts(entries))
         try:
-            (allowlist or DENY_ALL).check(f'https://{host}')
+            reachable.check(f'https://{host}')
         except EgressDenied as exc:
-            raise LLMUnavailable(f'il fornitore «{name}» non è raggiungibile: {exc}') from exc
+            raise LLMUnavailable(f'il modello «{entry.label}» non è raggiungibile: {exc}') from exc
     return provider
 
 
-def complete(prompt, *, settings, run=None, usage=None, allowlist=None, ceiling_cents=None,
-             spent_cents=0, guard=True):
+def complete(prompt, *, settings, kind='text', run=None, usage=None, allowlist=None,
+             ceiling_cents=None, spent_cents=0, guard=True):
     """Ask the model, under every constraint that applies.
 
     The order is the point: refuse before spending, spend before trusting, and
@@ -150,7 +168,7 @@ def complete(prompt, *, settings, run=None, usage=None, allowlist=None, ceiling_
                 f'Tetto di spesa per questo evento raggiunto ({spent_cents}/{ceiling_cents} '
                 'centesimi). Scrivi il testo dai dati che hai, oppure chiedi a una persona.')
 
-    provider = resolve(settings, allowlist=allowlist)
+    provider = resolve(settings, kind=kind, allowlist=allowlist)
     completion = provider.complete(prompt)
 
     if usage is not None:

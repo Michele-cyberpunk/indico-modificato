@@ -8,6 +8,7 @@ import pytest
 from indico_agents.governance.llm_guard import ForbiddenClaim
 from indico_agents.runtime import llm
 from indico_agents.runtime.egress import build
+from indico_agents.runtime.model_registry import ModelEntry, ModelKind, serialise
 
 
 class _Settings:
@@ -35,7 +36,15 @@ class _Provider:
                               cost_cents=self.cost, provider=self.name)
 
 
-ALLOWLIST = build([('api.modello.example', 'model_provider')])
+ALLOWLIST = build([('api.modello.example', 'model_providers')])
+
+
+def configured(adapter='finto', kind=ModelKind.text, model='finto-1', host='api.modello.example'):
+    """Settings holding one configured model row, as the page would save it."""
+    return _Settings({'model_providers': serialise([
+        ModelEntry(adapter=adapter, kind=kind, model=model, host=host)])})
+
+
 PROMPT = llm.Prompt(system='Scrivi in italiano.', user="Conferma l'iscrizione.", version='v1')
 
 
@@ -52,6 +61,27 @@ def test_with_nothing_configured_the_call_is_unavailable_not_broken():
         llm.resolve(_Settings())
 
 
+def test_a_model_of_the_wrong_kind_does_not_answer_a_request_for_prose():
+    # an image model must never be handed to a tool that asked for text
+    with pytest.raises(llm.LLMUnavailable, match='testo'):
+        llm.resolve(configured(kind=ModelKind.image))
+
+
+def test_the_page_and_the_runtime_read_the_same_rows():
+    # a screen that wrote where the runtime never looked would be worse than none
+    assert llm.configured_models(configured())[0].model == 'finto-1'
+    assert llm.configured_models(_Settings()) == ()
+
+
+def test_a_disabled_row_is_not_used():
+    from indico_agents.runtime.model_registry import ModelEntry as Entry
+
+    settings = _Settings({'model_providers': serialise([
+        Entry(adapter='finto', kind=ModelKind.text, model='finto-1', enabled=False)])})
+    with pytest.raises(llm.LLMUnavailable, match='riprovare non serve'):
+        llm.resolve(settings)
+
+
 def test_the_absence_is_shaped_like_every_other_missing_source():
     try:
         llm.resolve(_Settings())
@@ -61,18 +91,18 @@ def test_the_absence_is_shaped_like_every_other_missing_source():
     assert answer['configured'] is False
 
 
-def test_a_provider_named_but_not_installed_says_what_is_available():
+def test_a_model_whose_adapter_is_missing_says_what_is_available():
     with pytest.raises(llm.LLMUnavailable, match='adapter'):
-        llm.resolve(_Settings({'model_provider': 'inesistente'}))
+        llm.resolve(configured(adapter='inesistente'))
 
 
 def test_a_provider_off_the_allowlist_cannot_be_used(registered):
     with pytest.raises(llm.LLMUnavailable, match='non è raggiungibile'):
-        llm.resolve(_Settings({'model_provider': 'finto'}), allowlist=build([]))
+        llm.resolve(configured(), allowlist=build([]))
 
 
 def test_a_configured_and_allowed_provider_answers(registered):
-    completion = llm.complete(PROMPT, settings=_Settings({'model_provider': 'finto'}),
+    completion = llm.complete(PROMPT, settings=configured(),
                               allowlist=ALLOWLIST)
     assert completion.text.startswith('Gentile')
     assert completion.tokens == 140
@@ -81,14 +111,14 @@ def test_a_configured_and_allowed_provider_answers(registered):
 
 def test_the_cost_ceiling_refuses_before_spending(registered):
     with pytest.raises(llm.LLMRefused, match='Tetto di spesa'):
-        llm.complete(PROMPT, settings=_Settings({'model_provider': 'finto'}), allowlist=ALLOWLIST,
+        llm.complete(PROMPT, settings=configured(), allowlist=ALLOWLIST,
                      ceiling_cents=50, spent_cents=50)
     # refused before the call, not after the bill
     assert registered.calls == 0
 
 
 def test_below_the_ceiling_the_call_happens(registered):
-    llm.complete(PROMPT, settings=_Settings({'model_provider': 'finto'}), allowlist=ALLOWLIST,
+    llm.complete(PROMPT, settings=configured(), allowlist=ALLOWLIST,
                  ceiling_cents=50, spent_cents=10)
     assert registered.calls == 1
 
@@ -98,16 +128,16 @@ def test_a_draft_that_states_credits_is_refused_after_the_call():
     llm.register_provider('claim', lambda settings: provider)
     try:
         with pytest.raises(ForbiddenClaim):
-            llm.complete(PROMPT, settings=_Settings({'model_provider': 'claim'}), allowlist=ALLOWLIST)
+            llm.complete(PROMPT, settings=configured(adapter='claim'), allowlist=ALLOWLIST)
     finally:
         llm._PROVIDERS.pop('claim', None)
 
 
 def test_usage_records_what_was_spent(registered):
     usage = llm.Usage()
-    llm.complete(PROMPT, settings=_Settings({'model_provider': 'finto'}), allowlist=ALLOWLIST,
+    llm.complete(PROMPT, settings=configured(), allowlist=ALLOWLIST,
                  usage=usage)
-    llm.complete(PROMPT, settings=_Settings({'model_provider': 'finto'}), allowlist=ALLOWLIST,
+    llm.complete(PROMPT, settings=configured(), allowlist=ALLOWLIST,
                  usage=usage)
     assert usage.calls == 2
     assert usage.tokens == 280
@@ -122,7 +152,7 @@ def test_the_run_carries_the_model_and_the_bill(registered):
         cost_cents = 0
 
     run = _Run()
-    llm.complete(PROMPT, settings=_Settings({'model_provider': 'finto'}), allowlist=ALLOWLIST, run=run)
+    llm.complete(PROMPT, settings=configured(), allowlist=ALLOWLIST, run=run)
     assert run.model_name == 'finto-1'
     assert run.tokens_used == 140
     assert run.cost_cents == 7

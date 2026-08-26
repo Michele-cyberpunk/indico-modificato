@@ -61,8 +61,13 @@ def write_prose(context, purpose, facts, tone='formale', event_id=None):
     from indico_agents.runtime.egress import build
 
     settings = AgentsPlugin.settings
-    allowlist = build([(host, 'egress_allowlist')
-                       for host in (settings.get('egress_allowlist') or '').split(',')])
+    from indico_agents.runtime import model_registry
+
+    # a model's own host is authorised by the page that configured it; the free
+    # text field adds anything else this install may reach
+    allowlist = build([*model_registry.hosts(llm.configured_models(settings)),
+                       *((host, 'egress_allowlist')
+                         for host in (settings.get('egress_allowlist') or '').split(','))])
     prompt = llm.Prompt(
         system=(f'Scrivi in italiano, in tono {tone}, per la segreteria di un provider ECM. '
                 'Usa soltanto i fatti che ti vengono dati. Non dichiarare mai crediti, minuti di '

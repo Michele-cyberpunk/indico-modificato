@@ -121,7 +121,7 @@ la cartella prima che l'evento esista, e non crea `EventPerson`.
 cd plugins/indico_ecm    && PYTHONPATH=. python -m pytest indico_ecm    -q -c /dev/null -p no:indico
 cd plugins/indico_crm    && PYTHONPATH=. python -m pytest indico_crm    -q -c /dev/null -p no:indico
 cd plugins/indico_agents && PYTHONPATH=. python -m pytest indico_agents -q -c /dev/null -p no:indico
-# 482 · 40 · 158
+# 482 · 40 · 161
 
 make lint-py     # isort, ruff, backrefs
 ```
@@ -139,7 +139,7 @@ database usa-e-getta.
 ```bash
 cd ../indico-deploy/ecm-stack
 docker compose run --rm --no-deps -T indico-web bash -s < run-integration.sh
-# 64 passed
+# 71 passed
 ```
 
 ## Come si comporta lo strato agentico
@@ -177,6 +177,22 @@ nel cruscotto. Uno strumento la cui fonte manca risponde
 `capabilities.unavailable(...)`: «non configurata, riprovare non serve». Non
 solleva e non inventa.
 
+**`indico_agents/runtime/llm.py` — il modello, quando c'è.** Spento finché non
+si configura una riga in `/admin/agents/models`. Un modello di **testo** scrive
+prosa, uno di **immagini** una bozza grafica; uno strumento chiede il tipo che
+gli serve e riceve il primo attivo di quel tipo. La pagina e il runtime leggono
+la **stessa** impostazione (`model_providers`): una schermata che scrivesse dove
+il runtime non guarda sarebbe peggio di nessuna schermata. Ogni risposta passa
+da `governance/llm_guard.py`, che **rifiuta** — non ripara — una bozza che
+dichiari crediti, minuti, numeri di attestato o giudizi di idoneità. Il tetto di
+spesa per evento si verifica **prima** della chiamata.
+
+**`indico_agents/runtime/egress.py` — dove si può uscire.** Allowlist di host
+costruito dalla configurazione: gli host dei modelli vengono dalle loro righe,
+il resto dal campo `egress_allowlist`. Rifiuta per nome ciò che non è elencato,
+ammette solo `https`, e rifiuta comunque metadata service, loopback e reti
+private qualunque cosa dica la configurazione.
+
 Lo **scopo di sessione** dell'originale non è stato portato di proposito: la
 stessa difesa esiste in `governance/policy_rules.py`, che autorizza per livello
 di autonomia dell'agente chiamante. Due tabelle dei permessi sarebbero due cose
@@ -192,6 +208,11 @@ iniziale:
 indico db --plugin <ecm|crm|agents|integrations> migrate -m 'cosa cambia'
 indico db --plugin <ecm|crm|agents|integrations> upgrade
 ```
+
+**I modelli si configurano in una pagina, non nelle impostazioni del plugin.**
+`/admin/agents/models` scrive `model_providers`, che è la sola impostazione che
+il runtime legge. Aggiungere un campo `model_*` al form del plugin rimetterebbe
+due posti dove configurare la stessa cosa.
 
 **Ogni sezione ha una sua navigazione, e sta in un macro.** `_macros.html` di
 ciascun plugin espone `nav()`: l'ECM per evento (9 voci), `admin_nav()` per

@@ -57,7 +57,7 @@ configurato lo dichiarano invece di inventare dati.
 | Lista ospiti | lista incollata e foglio `.xlsx`: nomi in maiuscolo e con particelle, accompagnatori contati, righe scartate motivate, navette spezzate per capienza, foglio stampabile |
 | Da documento a cartella | email incollata e allegato Word: codice, data, relatori (particelle comprese) e cartella `0915 CARDIO … 0116-GDBO`, zip da 5 documenti scaricato dalla pagina |
 | **Suite di integrazione** (`plugins/integration_test.py`) | **71 test** su Indico e PostgreSQL reali: pipeline regolatoria, pagine ECM e CRM con creazione contatti/aziende/opportunità, consensi, note, brief albergo dedotto dal timetable |
-| Suite pure (senza database) | **680 test** (482 ecm + 40 crm + 158 agents) |
+| Suite pure (senza database) | **683 test** (482 ecm + 40 crm + 161 agents) |
 | ruff con la configurazione del repository | pulito |
 
 ## Copertura degli strumenti degli agenti
