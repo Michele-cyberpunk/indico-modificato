@@ -56,7 +56,7 @@ configurato lo dichiarano invece di inventare dati.
 | Lista ospiti | lista incollata e foglio `.xlsx`: nomi in maiuscolo e con particelle, accompagnatori contati, righe scartate motivate, navette spezzate per capienza, foglio stampabile |
 | Da documento a cartella | email incollata e allegato Word: codice, data, relatori (particelle comprese) e cartella `0915 CARDIO … 0116-GDBO`, zip da 5 documenti scaricato dalla pagina |
 | **Suite di integrazione** (`plugins/integration_test.py`) | **64 test** su Indico e PostgreSQL reali: pipeline regolatoria, pagine ECM e CRM con creazione contatti/aziende/opportunità, consensi, note, brief albergo dedotto dal timetable |
-| Suite pure (senza database) | **612 test** (482 ecm + 40 crm + 90 agents) |
+| Suite pure (senza database) | **658 test** (482 ecm + 40 crm + 136 agents) |
 | ruff con la configurazione del repository | pulito |
 
 ## Copertura degli strumenti degli agenti
@@ -109,8 +109,9 @@ configurato nelle impostazioni del plugin: nessun dato inventato.
 
 | Cosa | Perché |
 |---|---|
-| Runtime LLM | Gli agenti oggi sono deterministici e fanno un lavoro utile, e anche la pagina «Da documento a cartella» funziona senza modello: estrae con regole e compila i documenti iniziali da modelli. `automator.build_request`/`validate_response` sono pronti per quando si vorrà collegare un modello alla sola prosa; il prompt è versionato e vieta di dichiarare crediti |
-| Sandbox degli agenti | Serve solo quando si attiveranno strumenti di ricerca esterna, oggi disattivati |
+| Runtime LLM | **C'è, spento finché non si configura un fornitore.** Vincolato: mai sul percorso HTTP, uscita limitata a un allowlist, tetto di spesa per evento verificato prima della chiamata, e ogni risposta passa da una guardia che **rifiuta** le bozze che dichiarano crediti, minuti, numeri di attestato o giudizi di idoneità. Gli agenti restano deterministici: il modello scrive prosa, non decide |
+| Sandbox con rete negata | Nell'originale protegge un esecutore di codice generato. Qui non si esegue codice generato, quindi il controllo sta dove sta il rischio: un allowlist di uscita che rifiuta anche metadata service, loopback e reti private qualunque cosa dica la configurazione |
+| Subagenti che costruiscono agenti | Generano ed eseguono codice, cioè ciò che questa piattaforma esiste per non fare. Il valore che portano si otterrà con agenti **dichiarativi** — dati, non codice |
 | App mobile di check-in | Il check-in funziona da pagina; un'app userebbe la stessa rotta |
 | Firma digitale degli attestati | Il PDF è verificabile per numero, impronta e QR; la firma PAdES richiede un servizio esterno |
 | Sincronizzazione Gmail/Calendar | L'outbox transazionale è pronto; gli adapter concreti no |

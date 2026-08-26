@@ -43,6 +43,9 @@ TOOL_POLICIES = {
     'simulate_credits': ToolPolicy(AutonomyLevel.read_only),
     'list_certificate_candidates': ToolPolicy(AutonomyLevel.read_only),
     'write_brief': ToolPolicy(AutonomyLevel.read_only),
+    # writes nothing: it returns a draft for a person, and the guard refuses
+    # any draft that states a regulated value
+    'write_prose': ToolPolicy(AutonomyLevel.drafting),
     'inspect_event_checklist': ToolPolicy(AutonomyLevel.read_only),
     'list_due_reminders': ToolPolicy(AutonomyLevel.read_only),
     'invitation_costs': ToolPolicy(AutonomyLevel.read_only),

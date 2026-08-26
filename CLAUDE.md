@@ -121,7 +121,7 @@ la cartella prima che l'evento esista, e non crea `EventPerson`.
 cd plugins/indico_ecm    && PYTHONPATH=. python -m pytest indico_ecm    -q -c /dev/null -p no:indico
 cd plugins/indico_crm    && PYTHONPATH=. python -m pytest indico_crm    -q -c /dev/null -p no:indico
 cd plugins/indico_agents && PYTHONPATH=. python -m pytest indico_agents -q -c /dev/null -p no:indico
-# 482 · 40 · 90
+# 482 · 40 · 136
 
 make lint-py     # isort, ruff, backrefs
 ```
@@ -243,12 +243,27 @@ concreti verso Gmail e Calendar. L'outbox transazionale esiste ma `_HANDLERS` è
 vuoto: **nessuna email parte davvero**, le pagine preparano il testo e lo
 mostrano.
 
-Dallo strato agentico dell'originale restano fuori, per scelta: il **runtime
-LLM** (gli agenti oggi sono deterministici e fanno un lavoro utile; anche
-l'estrazione dai documenti è a regole), la **sandbox** con rete negata, che
-serve solo quando si attiveranno strumenti di ricerca esterna, e i **subagenti
-che costruiscono altri agenti** — superficie ampia e rischio reale, valore
-regolatorio nullo per un provider.
+Dello strato agentico dell'originale i **subagenti che costruiscono altri
+agenti** restano fuori per scelta: generano ed eseguono codice, cioè esattamente
+ciò che questa piattaforma esiste per non fare. Il valore che portano — permettere
+all'ufficio di definire un nuovo controllo ricorrente senza scrivere Python — si
+ottiene con agenti **dichiarativi**, che sono dati e non codice generato: non
+ancora fatti.
+
+Il **runtime LLM** invece c'è (`runtime/llm.py`), spento finché non si configura
+un fornitore. È vincolato per costruzione: mai sul percorso HTTP, solo da un run
+della coda, uscita limitata all'allowlist (`runtime/egress.py`), tetto di spesa
+per evento verificato **prima** della chiamata, e ogni risposta passa da
+`governance/llm_guard.py`, che **rifiuta** — non ripara — una bozza che dichiari
+crediti, minuti, numeri di attestato o giudizi di idoneità. Lo strumento che lo
+usa è `write_prose`, e restituisce una bozza per una persona.
+
+La **sandbox con rete negata** dell'originale protegge il suo esecutore di
+codice generato. Qui non si esegue codice generato, quindi una deny-all a
+livello di container difenderebbe una stanza vuota mentre le chiamate che
+davvero escono passano altrove: il controllo sta dove sta il rischio, cioè
+nell'allowlist di uscita, che rifiuta anche gli indirizzi interni (metadata
+service, loopback, reti private) qualunque cosa dica la configurazione.
 
 Gli agenti restano spenti finché non si attiva l'interruttore nel cruscotto: il
 valore predefinito è `enabled = False`.

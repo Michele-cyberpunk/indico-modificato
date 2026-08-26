@@ -51,6 +51,14 @@ CAPABILITIES = (
     ),
 )
 
+CAPABILITIES = (*CAPABILITIES, Capability(
+    setting='model_provider',
+    label='Modello linguistico',
+    gives=('la prosa di una lettera o di un brief a partire dai dati che la piattaforma ha già. '
+           'Non decide mai un valore regolato: crediti, minuti e numeri di attestato restano del '
+           'motore deterministico, e una bozza che li afferma viene rifiutata'),
+))
+
 CAPABILITIES_BY_SETTING = {capability.setting: capability for capability in CAPABILITIES}
 
 
