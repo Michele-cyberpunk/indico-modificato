@@ -31,8 +31,8 @@ graph TD
 
     subgraph plugins["plugins/"]
         ECM["<b>indico_ecm</b><br/>accreditamento · presenze · crediti<br/>attestati · inviti · ospiti<br/>faculty · messaggi · report"]
-        CRM["<b>indico_crm</b><br/>aziende · contatti · HCP<br/>opportunità · consensi<br/>scrivibile dall'ufficio"]
-        AG["<b>indico_agents</b><br/>coda · tool · skill<br/>approvazioni · audit"]
+        CRM["<b>indico_crm</b><br/>aziende · contatti · HCP<br/>opportunità · consensi<br/>evidenze pesate<br/>scrivibile dall'ufficio"]
+        AG["<b>indico_agents</b><br/>coda a due corsie · tool · skill<br/>budget di ricerca · capacità<br/>approvazioni · audit"]
         INT["<b>indico_integrations</b><br/>outbox transazionale"]
         HOT["hotel.py + templates.py<br/>brief albergo · 14 email<br/>.eml come bozze"]
     end
@@ -47,6 +47,8 @@ graph TD
     AG --> INT
     ECM --> HOT
     HOT -->|".eml scaricata,<br/>una persona preme invio"| OUT["client di posta"]
+    AG -->|"prove, non numeri"| CONF["confidence.py<br/>noisy-OR · bande<br/>solo verified scrive"]
+    CONF --> CRM
     AG -->|"sola lettura"| CR["credit_rules.py<br/>motore deterministico"]
     ECM --> CR
 ```
@@ -119,7 +121,7 @@ la cartella prima che l'evento esista, e non crea `EventPerson`.
 cd plugins/indico_ecm    && PYTHONPATH=. python -m pytest indico_ecm    -q -c /dev/null -p no:indico
 cd plugins/indico_crm    && PYTHONPATH=. python -m pytest indico_crm    -q -c /dev/null -p no:indico
 cd plugins/indico_agents && PYTHONPATH=. python -m pytest indico_agents -q -c /dev/null -p no:indico
-# 482 · 24 · 62
+# 482 · 40 · 90
 
 make lint-py     # isort, ruff, backrefs
 ```
@@ -137,8 +139,48 @@ database usa-e-getta.
 ```bash
 cd ../indico-deploy/ecm-stack
 docker compose run --rm --no-deps -T indico-web bash -s < run-integration.sh
-# 59 passed
+# 64 passed
 ```
+
+## Come si comporta lo strato agentico
+
+Quattro meccanismi che non sono opzionali e che si rompono in silenzio se
+qualcuno li aggira. Tutti puri e testabili senza database.
+
+**`indico_crm/services/confidence.py` — quanto siamo sicuri, e perché.** Un
+numero di confidenza scelto da chi scrive non è confrontabile fra record e non
+si può ridiscutere. Il punteggio si calcola dalle prove: fonti indipendenti si
+combinano (noisy-OR, tetto 0,99), le prove che **identificano** una persona
+(codice fiscale, albo, firma al banco) sono distinte da quelle che solo
+**corroborano** (ente, dominio email), e la banda `verified` è irraggiungibile
+senza almeno una delle prime. Una contraddizione blocca il punteggio sotto la
+soglia. **Solo `verified` autorizza a scrivere sul record**; tutto il resto è un
+suggerimento per una persona. Si usa `record_assessed_fact`, non `record_fact`.
+
+**`indico_agents/runtime/budget.py` — quanto può cercare.** Quattro ricerche
+esterne per soggetto, poi lo strumento rifiuta e dice cosa fare invece. È per
+soggetto e non per esecuzione: un lavoro che tocca trenta contatti non si
+esaurisce all'ottavo. Una fonte che risponde «non configurata» viene rimborsata,
+altrimenti un impianto senza fornitori esaurirebbe il budget senza uscire
+dall'edificio. Uno strumento che esce dalla piattaforma si dichiara con
+`@tool(..., costly=True)`: è quel flag, non il nome, a far scattare il budget.
+
+**`indico_agents/runtime/lanes.py` — due corsie in una tabella.** `visible` è
+lavoro che qualcuno sta aspettando: lotti da 60, presa 2 minuti. `research` esce
+dalla piattaforma: lotti da 12, presa 30 minuti. Il tipo di task decide la
+corsia (`RESEARCH_KINDS`); un tipo sconosciuto finisce nella corsia veloce, che
+è il default sicuro — essere in ritardo è un problema minore che bloccare tutto.
+
+**`indico_agents/governance/capabilities.py` — cosa esiste su questo impianto.**
+Le fonti esterne configurate, dette all'agente in prosa e all'ufficio in tabella
+nel cruscotto. Uno strumento la cui fonte manca risponde
+`capabilities.unavailable(...)`: «non configurata, riprovare non serve». Non
+solleva e non inventa.
+
+Lo **scopo di sessione** dell'originale non è stato portato di proposito: la
+stessa difesa esiste in `governance/policy_rules.py`, che autorizza per livello
+di autonomia dell'agente chiamante. Due tabelle dei permessi sarebbero due cose
+da tenere allineate.
 
 ## Regole di lavoro
 
@@ -185,16 +227,28 @@ Sono regole, non prudenza: ognuna nasce da un dato sbagliato su documenti veri.
    non esiste una conversione corretta: il brief consegna il CMYK e dice a chi
    tocca convertirlo.
 
+5. **Quanto si è sicuri di un fatto.** Non si scrive un numero di confidenza:
+   si passano le prove a `record_assessed_fact` e il punteggio lo calcola
+   `services/confidence.py`. Un agente che sceglie la propria confidenza si
+   corregge i compiti da solo.
+
 E due che sembrano nomi ma non lo sono: una riga sola sotto una sessione, senza
 ruolo e senza titolo (`Disease Modifying Treatment`), e una riga tutta in
 maiuscolo (`PERCORSO GRUPPO DI MIGLIORAMENTO`).
 
 ## Cosa non c'è ancora
 
-Report e statistiche, assistente vocale, generazione brochure e PPTX,
-`research_person`, gli adapter concreti verso Gmail e Calendar. L'outbox
-transazionale esiste ma `_HANDLERS` è vuoto: **nessuna email parte davvero**, le
-pagine preparano il testo e lo mostrano.
+Assistente vocale, generazione brochure e PPTX, `research_person`, gli adapter
+concreti verso Gmail e Calendar. L'outbox transazionale esiste ma `_HANDLERS` è
+vuoto: **nessuna email parte davvero**, le pagine preparano il testo e lo
+mostrano.
+
+Dallo strato agentico dell'originale restano fuori, per scelta: il **runtime
+LLM** (gli agenti oggi sono deterministici e fanno un lavoro utile; anche
+l'estrazione dai documenti è a regole), la **sandbox** con rete negata, che
+serve solo quando si attiveranno strumenti di ricerca esterna, e i **subagenti
+che costruiscono altri agenti** — superficie ampia e rischio reale, valore
+regolatorio nullo per un provider.
 
 Gli agenti restano spenti finché non si attiva l'interruttore nel cruscotto: il
 valore predefinito è `enabled = False`.
