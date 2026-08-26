@@ -25,7 +25,6 @@ Pure functions, no Indico imports.
 """
 
 import re
-from email.headerregistry import Address
 from email.message import EmailMessage
 from email.utils import formatdate
 

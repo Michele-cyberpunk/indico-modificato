@@ -185,7 +185,7 @@ class RHOpportunities(RHCRMBase):
         company_id = form.get('company_id', type=int)
         company = Company.query.filter_by(id=company_id, is_deleted=False).first() if company_id else None
         if company is None:
-            flash(_('Scegli l\'azienda.'), 'error')
+            flash(_("Scegli l'azienda."), 'error')
             return redirect(url_for_plugin('crm.opportunities'))
         opportunity = Opportunity(title=title, company_id=company.id,
                                   stage=OpportunityStage[form.get('stage', 'new')],

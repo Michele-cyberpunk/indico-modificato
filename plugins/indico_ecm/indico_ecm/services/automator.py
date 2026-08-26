@@ -29,7 +29,6 @@ import re
 from dataclasses import dataclass, field
 from datetime import date
 
-from indico_ecm.services.legacy_import import parse_date
 from indico_ecm.services.naming import generate_folder_name
 from indico_ecm.services import programme
 from indico_ecm.services.specialty import identify_event_format, identify_specialty

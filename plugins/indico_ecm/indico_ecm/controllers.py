@@ -507,7 +507,7 @@ class RHECMMessages(RHECMEventBase):
             return self._download_draft(wanted, context)
         messages = [preview(template, context)
                     for _, template in sorted(MESSAGE_TEMPLATES.items())]
-        catalogue = {name: template for name, template in MESSAGE_TEMPLATES.items()}
+        catalogue = dict(MESSAGE_TEMPLATES.items())
         return WPECM.render_template('messages.html', self.event, 'ecm',
                                      messages=messages, catalogue=catalogue,
                                      documents=DOCUMENT_TEMPLATES)
@@ -892,7 +892,7 @@ class RHECMArchiveExport(RHAdminBase):
                 'max_participants': accreditation.max_participants or '',
                 'activity_code': accreditation.activity_code or '',
                 'folder_name': operations.folder_name if operations else '',
-                'time_range': (f"{event.start_dt:%H:%M} - {event.end_dt:%H:%M}"
+                'time_range': (f'{event.start_dt:%H:%M} - {event.end_dt:%H:%M}'
                                if event.start_dt and event.end_dt else ''),
                 'deliverables': states_for_event(event),
                 'faculty': [{'name': link.full_name, 'email': link.email or ''}

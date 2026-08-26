@@ -864,7 +864,6 @@ def test_a_note_lands_on_the_timeline(client, scenario, unique):
 
 
 def test_creating_a_company_and_an_opportunity_from_the_pages(client, admin_csrf, unique):
-    from indico_crm.models.opportunities import OpportunityStage
 
     company_name = f'Sponsor Generale {unique}'
     response = client.post('/admin/crm/companies',

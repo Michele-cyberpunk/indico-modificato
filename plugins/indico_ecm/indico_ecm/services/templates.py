@@ -358,7 +358,7 @@ DOCUMENT_TEMPLATES = {
     },
     'engagement_letter': {
         'path': 'letters/lettera_incarico.docx',
-        'description': "Lettera di incarico al relatore, template Word storico del provider.",
+        'description': 'Lettera di incarico al relatore, template Word storico del provider.',
         'context': ('saluto', 'cognome_nome', 'data_nascita', 'email', 'ruolo', 'evento_ecm',
                     'titolo_progetto', 'codice_progetto', 'codice_evento', 'numero_incarico',
                     'data_evento', 'data_fine_evento', 'modalita', 'anno', 'compenso',

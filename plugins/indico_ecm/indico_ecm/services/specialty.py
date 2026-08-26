@@ -116,14 +116,14 @@ DECLARED_FORMAT_RE = re.compile(
 
 #: Ordered as in the original `mapTipoEvento`, with the word boundaries it used.
 _FORMAT_PATTERNS = (
-    (re.compile(r'residenziale|\bres\b', re.I), FORMAT_RES_WITH_TEST),
-    (re.compile(r'fad\s*asincron', re.I), FORMAT_FAD_ASYNC),
-    (re.compile(r'fad\s*sincron|\bfad\b', re.I), FORMAT_WEBINAR),
-    (re.compile(r'webinar', re.I), FORMAT_WEBINAR),
-    (re.compile(r'questionario', re.I), FORMAT_FSC_WITH_TEST),
-    (re.compile(r'\bfsc\b', re.I), FORMAT_FSC_WITHOUT_TEST),
+    (re.compile(r'residenziale|\bres\b', re.IGNORECASE), FORMAT_RES_WITH_TEST),
+    (re.compile(r'fad\s*asincron', re.IGNORECASE), FORMAT_FAD_ASYNC),
+    (re.compile(r'fad\s*sincron|\bfad\b', re.IGNORECASE), FORMAT_WEBINAR),
+    (re.compile(r'webinar', re.IGNORECASE), FORMAT_WEBINAR),
+    (re.compile(r'questionario', re.IGNORECASE), FORMAT_FSC_WITH_TEST),
+    (re.compile(r'\bfsc\b', re.IGNORECASE), FORMAT_FSC_WITHOUT_TEST),
     # "Gruppo di Miglioramento" without an explicit FSC prefix is still FSC.
-    (re.compile(r'gruppo\s+di\s+migliorament', re.I), FORMAT_FSC_WITHOUT_TEST),
+    (re.compile(r'gruppo\s+di\s+migliorament', re.IGNORECASE), FORMAT_FSC_WITHOUT_TEST),
 )
 
 

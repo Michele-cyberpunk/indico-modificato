@@ -46,19 +46,19 @@ TITLE_CHOICES = (('none', 'Nessuno'), ('doctor', 'Dottore/a'), ('professor', 'Pr
 _TITLE_PREFIXES = (
     # The feminine forms come first: otherwise the ambiguous prefix matches and
     # leaves a stray "ssa" glued to the name.
-    (re.compile(r'^(?:dott\.?ssa|dr\.?ssa|dottoressa)\b\.?\s*', re.I), 'doctor', 'F'),
-    (re.compile(r'^(?:prof\.?ssa|professoressa)\b\.?\s*', re.I), 'professor', 'F'),
-    (re.compile(r'^dottore\b\.?\s*', re.I), 'doctor', 'M'),
-    (re.compile(r'^professore\b\.?\s*', re.I), 'professor', 'M'),
-    (re.compile(r'^(?:dott|dr)\b\.?\s*', re.I), 'doctor', ''),
-    (re.compile(r'^prof\b\.?\s*', re.I), 'professor', ''),
-    (re.compile(r'^(?:sig\.?ra|mrs|ms)\b\.?\s*', re.I), 'none', 'F'),
-    (re.compile(r'^(?:sig|mr)\b\.?\s*', re.I), 'none', 'M'),
-    (re.compile(r'^ing\b\.?\s*', re.I), 'none', ''),
+    (re.compile(r'^(?:dott\.?ssa|dr\.?ssa|dottoressa)\b\.?\s*', re.IGNORECASE), 'doctor', 'F'),
+    (re.compile(r'^(?:prof\.?ssa|professoressa)\b\.?\s*', re.IGNORECASE), 'professor', 'F'),
+    (re.compile(r'^dottore\b\.?\s*', re.IGNORECASE), 'doctor', 'M'),
+    (re.compile(r'^professore\b\.?\s*', re.IGNORECASE), 'professor', 'M'),
+    (re.compile(r'^(?:dott|dr)\b\.?\s*', re.IGNORECASE), 'doctor', ''),
+    (re.compile(r'^prof\b\.?\s*', re.IGNORECASE), 'professor', ''),
+    (re.compile(r'^(?:sig\.?ra|mrs|ms)\b\.?\s*', re.IGNORECASE), 'none', 'F'),
+    (re.compile(r'^(?:sig|mr)\b\.?\s*', re.IGNORECASE), 'none', 'M'),
+    (re.compile(r'^ing\b\.?\s*', re.IGNORECASE), 'none', ''),
 )
 
 _DECLINED_TITLE = re.compile(
-    r'\b(?:dott\.?ssa|dr\.?ssa|prof\.?ssa|dottoressa|professoressa|sig\.?ra)\b', re.I)
+    r'\b(?:dott\.?ssa|dr\.?ssa|prof\.?ssa|dottoressa|professoressa|sig\.?ra)\b', re.IGNORECASE)
 
 _UNITS = ('Zero', 'Uno', 'Due', 'Tre', 'Quattro', 'Cinque', 'Sei', 'Sette', 'Otto', 'Nove',
           'Dieci', 'Undici', 'Dodici', 'Tredici', 'Quattordici', 'Quindici', 'Sedici',

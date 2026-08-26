@@ -59,7 +59,7 @@ def test_an_attachment_keeps_its_name_and_its_type():
     blob = build_eml(subject='Incarico', html_body='<p>In allegato</p>',
                      attachments=[('Lettera di incarico Rossi Mario.docx', b'PK\x03\x04finto')])
     message = parse(blob)
-    types = dict((name, content_type) for content_type, name in parts_of(message) if name)
+    types = {name: content_type for content_type, name in parts_of(message) if name}
     assert types['Lettera di incarico Rossi Mario.docx'] == (
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
 

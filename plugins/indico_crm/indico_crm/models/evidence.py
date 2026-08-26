@@ -82,6 +82,25 @@ class Evidence(db.Model):
         nullable=False,
         default=50
     )
+    #: The band the proofs earned: verified, probable, possible, or empty when
+    #: the confidence was asserted rather than computed
+    band = db.Column(
+        db.String,
+        nullable=False,
+        default=''
+    )
+    #: Why the score is what it is, in one sentence a colleague can act on
+    rationale = db.Column(
+        db.String,
+        nullable=False,
+        default=''
+    )
+    #: The individual proofs, as recorded: kind, detail, source
+    proofs = db.Column(
+        db.JSON,
+        nullable=False,
+        default=list
+    )
     recorded_by_id = db.Column(
         db.Integer,
         db.ForeignKey('users.users.id'),

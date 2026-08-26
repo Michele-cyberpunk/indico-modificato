@@ -124,18 +124,49 @@ def list_outstanding_work(context, event_id=None, contact_id=None):
     return result
 
 
-@tool('record_fact', description='Registra un fatto con la sua fonte. Non sovrascrive: supera il precedente.')
-def record_fact(context, subject_type, subject_id, statement, kind='derived', attribute='',
-                source_ref='', confidence=50):
+@tool('record_fact',
+      description=('Registra un fatto con le prove che lo sostengono. Il punteggio lo calcola la '
+                   'piattaforma dalle prove: non inventare prove che non hai osservato.'))
+def record_fact(context, subject_type, subject_id, statement, proofs=None, kind='derived',
+                attribute='', source_ref='', confidence=None):
+    """Record one claim, with the evidence for it.
+
+    `proofs` is a list of `{kind, detail, source_ref}`; the kinds are the ones in
+    `indico_crm.services.confidence.WEIGHTS`. The band that comes back says what
+    the claim licenses: only `verified` may be written onto the record, anything
+    else is a suggestion for a person.
+
+    `confidence` remains for the few callers that genuinely have a number and no
+    proofs; it records the claim without a band, which is exactly what an
+    unevidenced assertion deserves.
+    """
     from indico_crm.models.evidence import EvidenceKind
     from indico_crm.models.links import CRMObjectType
-    from indico_crm.services.evidence import record_fact as store
+    from indico_crm.services.confidence import WEIGHTS
+    from indico_crm.services.evidence import record_assessed_fact, record_fact as store
+
+    reference = source_ref or f'agent_run:{context.run.id}'
+    if proofs:
+        unknown = sorted({item.get('kind') for item in proofs} - set(WEIGHTS))
+        if unknown:
+            return {'error': f'tipi di prova sconosciuti: {", ".join(unknown)}',
+                    'known': sorted(WEIGHTS)}
+        evidence, assessment = record_assessed_fact(
+            CRMObjectType[subject_type], subject_id, statement,
+            proofs=[{'kind': item['kind'], 'detail': item.get('detail', ''),
+                     'source_ref': item.get('source_ref', '')} for item in proofs],
+            kind=EvidenceKind[kind], attribute=attribute, source_ref=reference,
+            agent_run_id=context.run.id)
+        return {'evidence_id': evidence.id, 'score': assessment.score,
+                'band': assessment.band.value if assessment.band else None,
+                'writable': assessment.is_writable, 'rationale': assessment.rationale}
 
     evidence = store(CRMObjectType[subject_type], subject_id, statement,
-                     kind=EvidenceKind[kind], attribute=attribute,
-                     source_ref=source_ref or f'agent_run:{context.run.id}',
-                     confidence=confidence, agent_run_id=context.run.id)
-    return {'evidence_id': evidence.id}
+                     kind=EvidenceKind[kind], attribute=attribute, source_ref=reference,
+                     confidence=50 if confidence is None else confidence,
+                     agent_run_id=context.run.id)
+    return {'evidence_id': evidence.id, 'band': None,
+            'note': 'nessuna prova allegata: il fatto è registrato ma non guadagna una banda'}
 
 
 @tool('create_task', description="Crea un'attività per una persona.")
