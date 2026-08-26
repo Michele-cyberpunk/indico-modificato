@@ -66,7 +66,7 @@ l'applicazione completa: questi test coprono di proposito solo la logica pura
 schema e import dell'archivio legacy, template, costi, promemoria, automator con
 le sue espressioni regolari e la costruzione della cartella evento, lettura della
 lista ospiti con transfer e coperti, backoff della coda, tabella dei permessi
-degli agenti), 376 test in tutto.
+degli agenti), 612 test in tutto.
 
 ## Test di integrazione
 

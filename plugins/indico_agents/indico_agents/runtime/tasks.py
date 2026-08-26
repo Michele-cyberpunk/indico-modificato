@@ -28,6 +28,7 @@ from indico.util.date_time import now_utc
 
 from indico_agents.models.tasks import AgentTask, TaskOrigin, TaskStatus
 from indico_agents.runtime.backoff import DEFAULT_LEASE_SECONDS, lease_expiry, next_run_after, should_give_up
+from indico_agents.runtime.lanes import lane_for
 
 
 logger = Logger.get('plugin.agents.queue')
@@ -39,7 +40,7 @@ def worker_id():
 
 
 def schedule_task(kind, subject_type, subject_id, *, event_id=None, delay=0, payload=None, priority=0,
-                  origin=TaskOrigin.signal, max_attempts=5, replace_pending=True):
+                  origin=TaskOrigin.signal, max_attempts=5, replace_pending=True, lane=None):
     """Queue work, or leave the existing task alone.
 
     Signals fire more often than work needs doing — a registration can be
@@ -62,14 +63,14 @@ def schedule_task(kind, subject_type, subject_id, *, event_id=None, delay=0, pay
 
     task = AgentTask(kind=kind, subject_type=subject_type, subject_id=subject_id, event_id=event_id,
                      payload=payload or {}, priority=priority, run_after=run_after, origin=origin,
-                     max_attempts=max_attempts)
+                     max_attempts=max_attempts, lane=lane or lane_for(kind))
     db.session.add(task)
     db.session.flush()
     logger.debug('queued task %s for %s %s', kind, subject_type, subject_id)
     return task
 
 
-def claim_due(limit=10, *, owner=None, lease_seconds=DEFAULT_LEASE_SECONDS, kinds=None):
+def claim_due(limit=10, *, owner=None, lease_seconds=DEFAULT_LEASE_SECONDS, kinds=None, lane=None):
     """Claim up to `limit` due tasks for this worker.
 
     `with_for_update(skip_locked=True)` is what allows several workers to run
@@ -81,6 +82,8 @@ def claim_due(limit=10, *, owner=None, lease_seconds=DEFAULT_LEASE_SECONDS, kind
     owner = owner or worker_id()
     now = now_utc()
     query = AgentTask.query.filter(AgentTask.status == TaskStatus.pending, AgentTask.run_after <= now)
+    if lane:
+        query = query.filter(AgentTask.lane == lane)
     if kinds:
         # the filter has to come before limit(): SQLAlchemy refuses to narrow a
         # query that already has a LIMIT
@@ -187,8 +190,19 @@ def extend_lease(task, *, seconds=DEFAULT_LEASE_SECONDS):
 
 
 def queue_stats():
-    """Counts by status, for the dashboard and for monitoring."""
+    """Counts by status and by lane, for the dashboard and for monitoring.
+
+    The per-lane count is what tells an operator whether the slow lane is
+    filling up: the status totals alone hide it, because a research backlog and
+    a checklist backlog look identical from outside.
+    """
     rows = (db.session.query(AgentTask.status, db.func.count(AgentTask.id))
             .group_by(AgentTask.status)
             .all())
-    return {status.name: count for status, count in rows}
+    stats = {status.name: count for status, count in rows}
+    pending = (db.session.query(AgentTask.lane, db.func.count(AgentTask.id))
+               .filter(AgentTask.status == TaskStatus.pending)
+               .group_by(AgentTask.lane)
+               .all())
+    stats['pending_by_lane'] = dict(pending)
+    return stats

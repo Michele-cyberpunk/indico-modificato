@@ -47,6 +47,7 @@ class AgentsPlugin(IndicoPlugin):
         'max_cost_cents_per_event': 0,
         'model_name': '',
         'research_provider': '',
+        'registry_provider': '',
     }
 
     def init(self):

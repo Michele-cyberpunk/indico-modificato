@@ -214,19 +214,21 @@ def write_brief(context, subject_type, subject_id):
             'note': 'ogni voce proviene dai dati della piattaforma; nessuna deduzione aggiunta'}
 
 
-@tool('research_company', description="Ricerca esterna su un'azienda, se un fornitore è configurato.")
+@tool('research_company', costly=True,
+      description="Ricerca esterna su un'azienda, se un fornitore è configurato.")
 def research_company(context, company_id):
+    from indico_agents.governance import capabilities
     from indico_agents.plugin import AgentsPlugin
 
     provider = AgentsPlugin.settings.get('research_provider')
     if not provider:
-        return {'configured': False,
-                'note': 'nessun fornitore di ricerca configurato: la ricerca esterna è disattivata'}
+        return capabilities.unavailable('research_provider')
     return {'configured': True, 'provider': provider, 'results': [],
             'note': 'adapter del fornitore non ancora implementato'}
 
 
-@tool('enrich_company', description="Arricchisce i dati di un'azienda dalle fonti configurate.")
+@tool('enrich_company', costly=True,
+      description="Arricchisce i dati di un'azienda dalle fonti configurate.")
 def enrich_company(context, company_id):
     result = research_company(context, company_id)
     if not result.get('configured'):

@@ -23,6 +23,47 @@ markdown versionato; l'approvazione umana prima di ogni scrittura.
 Dove un file riprende un meccanismo, il suo docstring lo dichiara. È
 un'indicazione di provenienza del *disegno*, non del codice.
 
+## I quattro meccanismi ripresi dopo il primo passaggio
+
+Rileggendo il sorgente riga per riga sono emersi quattro meccanismi che la prima
+versione non aveva. Tre sono stati portati; il quarto è risultato già coperto da
+un'altra parte del disegno.
+
+**Pesatura delle evidenze** (`indico_crm.services.confidence`). Fonti
+indipendenti si combinano senza mai arrivare alla certezza; le prove che
+*identificano* una persona sono distinte da quelle che solo *corroborano*, e la
+banda `verified` è irraggiungibile senza almeno una delle prime; una
+contraddizione blocca il punteggio sotto la soglia. Solo `verified` autorizza a
+scrivere sul record.
+
+**Budget di ricerca** (`indico_agents.runtime.budget`). Un agente che può
+chiamare una fonte esterna continua a chiamarla, perché un'altra ricerca
+*potrebbe* sempre risolvere la questione. Il budget non è un consiglio, è un
+rifiuto: quattro ricerche per soggetto, poi lo strumento smette di rispondere e
+gli dice cosa fare invece — scrivere ciò che ha, o riprogrammare una verifica
+motivandola. Una fonte non configurata non consuma budget, altrimenti un
+impianto senza fornitori lo esaurirebbe senza uscire dall'edificio.
+
+**Due corsie nella coda** (`indico_agents.runtime.lanes`). Il lavoro che qualcuno
+sta aspettando finisce in secondi e va preso a lotti grandi con presa breve; la
+ricerca esterna richiede minuti e va presa poca per volta con presa lunga. Una
+sola tabella, un solo meccanismo di presa, due serie di numeri — così una
+ricerca lenta non fa aspettare quaranta compiti rapidi.
+
+**Registro delle capacità** (`indico_agents.governance.capabilities`). Quali
+fonti esterne esistono su questo impianto, dichiarate in prosa all'agente e in
+tabella all'ufficio. Gli strumenti delle fonti mancanti rispondono «non
+configurata, riprovare non serve» invece di fallire.
+
+**Lo scopo di sessione non è stato portato, perché sarebbe stato ridondante.**
+Nell'originale ogni strumento verifica per quale scopo la sessione è aperta
+(`builder`, `team-agent`, `research`). Qui la stessa difesa esiste su un asse
+diverso e più adatto: gli agenti sono nominati e tipizzati, e
+`governance/policy_rules.py` autorizza ogni strumento in base al livello di
+autonomia dell'agente chiamante. Aggiungere anche lo scopo avrebbe significato
+due tabelle dei permessi da tenere allineate, che è il modo più affidabile di
+ottenerne una sbagliata.
+
 ## Perché la scelta della sorgente è legalmente pulita
 
 | Progetto | Licenza | Conseguenza |

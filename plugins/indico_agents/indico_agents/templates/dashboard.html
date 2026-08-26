@@ -107,4 +107,47 @@
             {% endfor %}
         </tbody>
     </table>
+
+    <h3>{% trans %}Fonti esterne{% endtrans %}</h3>
+    <p class="text-not-important">
+        {% trans %}Ciò che questo impianto può raggiungere oltre ai propri dati. Gli strumenti
+        delle fonti non configurate lo dichiarano invece di fallire, e l'agente riceve lo stesso
+        elenco in prosa: non pianifica di usare ciò che non c'è.{% endtrans %}
+    </p>
+    <table class="i-table-widget">
+        <thead><tr><th>Fonte</th><th>Stato</th><th>Cosa aggiunge</th><th>Impostazione</th></tr></thead>
+        <tbody>
+            {% for capability, on in capabilities %}
+                <tr>
+                    <td>{{ capability.label }}</td>
+                    <td>
+                        {%- if on %}<span class="i-label accept small">{% trans %}configurata{% endtrans %}</span>
+                        {%- else %}<span class="i-label disabled small">{% trans %}assente{% endtrans %}</span>{% endif %}
+                    </td>
+                    <td><small>{{ capability.gives }}</small></td>
+                    <td><code>{{ capability.setting }}</code></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>{% trans %}Corsie della coda{% endtrans %}</h3>
+    <p class="text-not-important">
+        {% trans %}Una ricerca lenta non deve far aspettare quaranta compiti rapidi: ogni corsia
+        ha il proprio lotto e il proprio tempo di presa.{% endtrans %}
+    </p>
+    <table class="i-table-widget">
+        <thead><tr><th>Corsia</th><th>Lotto</th><th>Presa</th><th>In attesa</th><th>Per cosa</th></tr></thead>
+        <tbody>
+            {% for lane in lanes %}
+                <tr>
+                    <td><code>{{ lane.name }}</code></td>
+                    <td>{{ lane.batch }}</td>
+                    <td>{{ lane.lease_seconds // 60 }} min</td>
+                    <td>{{ stats.get('pending_by_lane', {}).get(lane.name, 0) }}</td>
+                    <td><small>{{ lane.description }}</small></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 {% endblock %}

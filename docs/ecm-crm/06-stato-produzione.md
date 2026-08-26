@@ -52,11 +52,11 @@ configurato lo dichiarano invece di inventare dati.
 | Import foglio ospedali + generazione lettere | 2 righe importate, archivio `.zip` da ~60 KB con i `.docx` |
 | Check-in dal banco | presenza registrata, risposta JSON |
 | Pipeline crediti completa | 360/360 minuti dal timetable reale, 9 crediti, attestato numerato, verifica pubblica valida |
-| Coda agenti | dedup, `FOR UPDATE SKIP LOCKED` fra due worker, backoff, recupero del lease di un worker morto |
+| Coda agenti | dedup, `FOR UPDATE SKIP LOCKED` fra due worker, backoff, recupero del lease di un worker morto, due corsie con lotti e prese diverse |
 | Lista ospiti | lista incollata e foglio `.xlsx`: nomi in maiuscolo e con particelle, accompagnatori contati, righe scartate motivate, navette spezzate per capienza, foglio stampabile |
 | Da documento a cartella | email incollata e allegato Word: codice, data, relatori (particelle comprese) e cartella `0915 CARDIO … 0116-GDBO`, zip da 5 documenti scaricato dalla pagina |
-| **Suite di integrazione** (`plugins/integration_test.py`) | **45 test** su Indico e PostgreSQL reali: pipeline regolatoria, pagine ECM e CRM con creazione contatti/aziende/opportunità, consensi, note, brief albergo dedotto dal timetable |
-| Suite pure (senza database) | **568 test** (482 ecm + 24 crm + 62 agents) |
+| **Suite di integrazione** (`plugins/integration_test.py`) | **64 test** su Indico e PostgreSQL reali: pipeline regolatoria, pagine ECM e CRM con creazione contatti/aziende/opportunità, consensi, note, brief albergo dedotto dal timetable |
+| Suite pure (senza database) | **612 test** (482 ecm + 40 crm + 90 agents) |
 | ruff con la configurazione del repository | pulito |
 
 ## Copertura degli strumenti degli agenti
@@ -64,6 +64,7 @@ configurato lo dichiarano invece di inventare dati.
 | Controllo | Esito |
 |---|---|
 | Strumenti implementati | 27 |
+| Strumenti che escono dalla piattaforma | 2, entrambi a budget |
 | Autorizzati ma non implementati | **nessuno** |
 | Implementati ma non autorizzati | **nessuno** |
 | Azioni di approvazione senza esecutore | **nessuna** |

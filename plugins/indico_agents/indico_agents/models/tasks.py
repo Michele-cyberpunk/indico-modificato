@@ -91,6 +91,15 @@ class AgentTask(db.Model):
         nullable=False,
         default=TaskStatus.pending
     )
+    #: Which lane drains this task. `visible` is work somebody is waiting on and
+    #: is claimed in large batches on a short lease; `research` reaches outside,
+    #: takes minutes rather than seconds, and must not make the rest queue behind it.
+    lane = db.Column(
+        db.String,
+        nullable=False,
+        default='visible',
+        index=True
+    )
     priority = db.Column(
         db.Integer,
         nullable=False,

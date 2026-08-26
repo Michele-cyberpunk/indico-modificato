@@ -12,15 +12,17 @@ decision can be explained with the rules that were in force at the time.
 """
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from indico.core.db import db
 from indico.core.logger import Logger
 from indico.util.date_time import now_utc
 
+from indico_agents.governance import capabilities
 from indico_agents.models.runs import AgentRun, RunState
 from indico_agents.runtime import tasks as queue
+from indico_agents.runtime.budget import Budget
 
 
 logger = Logger.get('plugin.agents.runner')
@@ -46,6 +48,10 @@ class RunContext:
     task: object
     run: AgentRun
     skills: dict
+    #: Outside lookups this run may still make, per subject
+    budget: Budget = field(default_factory=Budget)
+    #: The outside sources this install actually has, as prose for the agent
+    capabilities: str = ''
 
     @property
     def event_id(self):
@@ -101,7 +107,8 @@ def run_task(task):
     queue.mark_running(task)
     db.session.flush()
 
-    context = RunContext(task=task, run=run, skills=skills)
+    context = RunContext(task=task, run=run, skills=skills, budget=Budget(),
+                         capabilities=capabilities.markdown())
     try:
         agent.run(context)
     except Exception as exc:
@@ -112,6 +119,8 @@ def run_task(task):
         raise
     if run.state == RunState.running:
         run.state = RunState.done
+    if context.budget.report()['total']:
+        context.note(f'Ricerche esterne: {context.budget.report()["total"]}.')
     run.ended_dt = now_utc()
     queue.complete(task)
     db.session.flush()

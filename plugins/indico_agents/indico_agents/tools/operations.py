@@ -150,7 +150,8 @@ def prepare_invitation_letters(context, event_id):
     return {'count': len(letters), 'letters': letters}
 
 
-@tool('prepare_hotel_brief', description="Prepara la richiesta all'albergo dai servizi dedotti dal programma. Non invia.")
+@tool('prepare_hotel_brief',
+      description=("Prepara la richiesta all'albergo dai servizi dedotti dal programma. Non invia."))
 def prepare_hotel_brief(context, event_id):
     from indico.modules.events import Event
 

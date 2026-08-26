@@ -12,11 +12,13 @@ from indico.modules.admin.views import WPAdmin
 from indico.util.i18n import _
 
 from indico_agents.governance import approvals as approval_service
+from indico_agents.governance import capabilities
 from indico_agents.governance.kill_switch import agents_enabled, set_agents_enabled
 from indico_agents.models.approvals import Approval, ApprovalState
 from indico_agents.models.runs import AgentRun
 from indico_agents.models.tasks import AgentTask, TaskStatus
 from indico_agents.runtime import tasks as queue
+from indico_agents.runtime.lanes import LANES
 
 
 class WPAgents(WPJinjaMixinPlugin, WPAdmin):
@@ -40,7 +42,8 @@ class RHAgentsDashboard(RHAdminBase):
                    .all())
         return WPAgents.render_template('dashboard.html', 'agents', stats=queue.queue_stats(),
                                         runs=recent_runs, failed_tasks=failed, approvals=pending,
-                                        enabled=agents_enabled())
+                                        enabled=agents_enabled(), lanes=LANES,
+                                        capabilities=capabilities.current())
 
 
 class RHToggleAgents(RHAdminBase):

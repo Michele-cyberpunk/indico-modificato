@@ -21,18 +21,22 @@ from indico.core.logger import Logger
 
 from indico_agents.governance.kill_switch import agents_enabled
 from indico_agents.runtime import tasks as queue
+from indico_agents.runtime.lanes import LANES
 from indico_agents.runtime.runner import run_task
 
 
 logger = Logger.get('plugin.agents.dispatch')
 
-#: How many tasks a single dispatcher tick may start
-BATCH_SIZE = 10
-
 
 @celery.periodic_task(name='agents_dispatch', run_every=crontab(minute='*'))
 def dispatch():
-    """Claim due tasks and run them."""
+    """Claim due tasks and run them, one lane at a time.
+
+    Each lane is claimed with its own batch size and lease, so a handful of slow
+    outside lookups cannot hold up the work the office is waiting on. The lanes
+    are drained in order, fast first: on a busy tick that is also the order the
+    results are wanted in.
+    """
     if not agents_enabled():
         logger.info('agent layer disabled by kill switch, skipping dispatch')
         return
@@ -40,14 +44,14 @@ def dispatch():
     queue.reclaim_expired()
     db.session.commit()
 
-    claimed = queue.claim_due(BATCH_SIZE)
-    db.session.commit()
-    if not claimed:
-        return
-
-    logger.info('dispatching %d task(s)', len(claimed))
-    for task in claimed:
-        run_agent_task.delay(task.id)
+    for lane in LANES:
+        claimed = queue.claim_due(lane.batch, lane=lane.name, lease_seconds=lane.lease_seconds)
+        db.session.commit()
+        if not claimed:
+            continue
+        logger.info('dispatching %d task(s) on the %s lane', len(claimed), lane.name)
+        for task in claimed:
+            run_agent_task.delay(task.id)
 
 
 @celery.task(name='agents_run_task', bind=True, max_retries=0)

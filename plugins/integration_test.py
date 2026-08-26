@@ -335,6 +335,52 @@ def test_claiming_by_kind_works(clean_queue):
     assert [task.kind for task in claimed] == ['wanted']
 
 
+def test_a_slow_lookup_does_not_block_the_work_the_office_waits_on(clean_queue):
+    from indico.core.db import db
+
+    from indico_agents.runtime import tasks as queue
+    from indico_agents.runtime.lanes import RESEARCH, VISIBLE
+
+    queue.schedule_task('company_research', 'company', 1)
+    queue.schedule_task('credit_evaluation', 'registration', 1)
+    db.session.commit()
+
+    fast = queue.claim_due(VISIBLE.batch, owner='w', lane=VISIBLE.name,
+                           lease_seconds=VISIBLE.lease_seconds)
+    db.session.commit()
+    assert [task.kind for task in fast] == ['credit_evaluation']
+
+    slow = queue.claim_due(RESEARCH.batch, owner='w', lane=RESEARCH.name,
+                           lease_seconds=RESEARCH.lease_seconds)
+    assert [task.kind for task in slow] == ['company_research']
+
+
+def test_the_lane_is_chosen_from_the_kind_and_stored(clean_queue):
+    from indico.core.db import db
+
+    from indico_agents.runtime import tasks as queue
+
+    research = queue.schedule_task('registry_verification', 'contact', 1)
+    visible = queue.schedule_task('checklist_review', 'event', 1)
+    db.session.commit()
+    assert research.lane == 'research'
+    assert visible.lane == 'visible'
+
+
+def test_the_slow_lane_keeps_its_task_longer(clean_queue):
+    from indico.core.db import db
+
+    from indico_agents.runtime import tasks as queue
+    from indico_agents.runtime.lanes import RESEARCH, VISIBLE
+
+    queue.schedule_task('contact_enrichment', 'contact', 2)
+    queue.schedule_task('credit_evaluation', 'registration', 2)
+    db.session.commit()
+    slow = queue.claim_due(5, owner='w', lane=RESEARCH.name, lease_seconds=RESEARCH.lease_seconds)[0]
+    fast = queue.claim_due(5, owner='w', lane=VISIBLE.name, lease_seconds=VISIBLE.lease_seconds)[0]
+    assert slow.lease_expires_dt > fast.lease_expires_dt
+
+
 def test_a_failure_comes_back_with_backoff(clean_queue):
     from indico.core.db import db
 
