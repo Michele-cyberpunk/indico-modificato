@@ -1,0 +1,36 @@
+{% macro csrf() %}
+    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+{% endmacro %}
+
+{#- The three CRM sections are peers. Without this the side menu reaches only
+    contacts, and companies and opportunities exist but cannot be found. -#}
+{% macro nav(current) %}
+    <div class="toolbar space-after">
+        <div class="group">
+            {% for endpoint, label in [('crm.contacts', 'Contatti'),
+                                       ('crm.companies', 'Aziende'),
+                                       ('crm.opportunities', 'Opportunità')] %}
+                {% if endpoint == current %}
+                    <span class="i-button highlight">{{ label }}</span>
+                {% else %}
+                    <a class="i-button" href="{{ url_for_plugin(endpoint) }}">{{ label }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+{% endmacro %}
+
+{#- How sure the platform is, and why. The band is what licenses an action, so
+    it leads; the percentage follows it in small type for anyone who wants it. -#}
+{% macro confidence_label(entry) %}
+    {%- if entry.band == 'verified' %}
+        <span class="i-label accept small" title="{{ entry.rationale }}">{% trans %}verificato{% endtrans %}</span>
+    {%- elif entry.band == 'probable' %}
+        <span class="i-label highlight small" title="{{ entry.rationale }}">{% trans %}probabile{% endtrans %}</span>
+    {%- elif entry.band == 'possible' %}
+        <span class="i-label warning small" title="{{ entry.rationale }}">{% trans %}possibile{% endtrans %}</span>
+    {%- else %}
+        <span class="i-label disabled small">{% trans %}non valutato{% endtrans %}</span>
+    {%- endif %}
+    <small class="text-not-important">{{ entry.confidence }}%</small>
+{% endmacro %}

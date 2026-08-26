@@ -1,8 +1,11 @@
 {% extends 'layout/admin_page.html' %}
+{% from 'crm:_macros.html' import confidence_label, nav %}
 
 {% block title %}{{ contact.full_name }}{% endblock %}
 
 {% block content %}
+    {{ nav('crm.contacts') }}
+
     <section>
         <h3>{{ contact.full_name }}</h3>
         <table class="i-table-widget">
@@ -96,8 +99,23 @@
             {% for entry in evidence %}
                 <li>
                     <strong>{{ entry.attribute or '—' }}</strong>: {{ entry.statement }}
-                    <em>({{ entry.kind.title }}, {{ entry.confidence }}%{% if entry.is_from_agent %},
-                        {% trans %}agente{% endtrans %}{% endif %})</em>
+                    {{ confidence_label(entry) }}
+                    <em class="text-not-important">{{ entry.kind.title }}{% if entry.is_from_agent %},
+                        {% trans %}agente{% endtrans %}{% endif %}</em>
+                    {% if entry.rationale %}
+                        <div class="text-not-important"><small>{{ entry.rationale }}</small></div>
+                    {% endif %}
+                    {% if entry.proofs %}
+                        <details>
+                            <summary><small>{% trans %}le prove{% endtrans %} ({{ entry.proofs | length }})</small></summary>
+                            <ul>
+                                {% for proof in entry.proofs %}
+                                    <li><small>{{ proof.detail }}
+                                        {%- if proof.source_ref %} — <code>{{ proof.source_ref }}</code>{% endif %}</small></li>
+                                {% endfor %}
+                            </ul>
+                        </details>
+                    {% endif %}
                 </li>
             {% else %}
                 <li>{% trans %}Nessuna evidenza registrata.{% endtrans %}</li>

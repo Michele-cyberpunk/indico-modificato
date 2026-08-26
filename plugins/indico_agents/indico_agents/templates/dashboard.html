@@ -1,8 +1,11 @@
 {% extends 'layout/admin_page.html' %}
+{% from 'agents:_macros.html' import nav %}
 
 {% block title %}{% trans %}Agenti{% endtrans %}{% endblock %}
 
 {% block content %}
+    {{ nav('agents.dashboard') }}
+
     <div class="i-callout {{ 'success' if enabled else 'warning' }}">
         {% if enabled %}
             {% trans %}Gli agenti sono attivi.{% endtrans %}
@@ -24,6 +27,18 @@
             <li>{{ status }}: {{ count }}</li>
         {% endfor %}
     </ul>
+
+    <h3>{% trans %}Spesa dei modelli{% endtrans %}</h3>
+    <table class="i-table-widget">
+        <tbody>
+            <tr><td>{% trans %}Speso in totale{% endtrans %}</td>
+                <td><strong>{{ '%.2f' % (spend.total_cents / 100) }} €</strong>
+                    <small class="text-not-important">{{ spend.tokens }} token su {{ spend.runs }} esecuzioni</small></td></tr>
+            <tr><td>{% trans %}Tetto per evento{% endtrans %}</td>
+                <td>{% if spend.ceiling_cents %}{{ '%.2f' % (spend.ceiling_cents / 100) }} €
+                    {%- else %}<span class="text-not-important">{% trans %}nessuno{% endtrans %}</span>{% endif %}</td></tr>
+        </tbody>
+    </table>
 
     <h3>{% trans %}Approvazioni in attesa{% endtrans %}</h3>
     <table class="i-table-widget">
@@ -71,6 +86,8 @@
                 <th>{% trans %}Agente{% endtrans %}</th>
                 <th>{% trans %}Stato{% endtrans %}</th>
                 <th>{% trans %}Riepilogo{% endtrans %}</th>
+                <th>{% trans %}Modello{% endtrans %}</th>
+                <th>{% trans %}Costo{% endtrans %}</th>
                 <th>{% trans %}Inizio{% endtrans %}</th>
             </tr>
         </thead>
@@ -80,6 +97,11 @@
                     <td>{{ run.agent_name }}</td>
                     <td>{{ run.state.title }}</td>
                     <td>{{ run.summary }}</td>
+                    <td>{% if run.model_name %}<code>{{ run.model_name }}</code>
+                        <small class="text-not-important">{{ run.tokens_used or 0 }} tok</small>
+                        {%- else %}<span class="text-not-important">—</span>{% endif %}</td>
+                    <td>{% if run.cost_cents %}{{ '%.2f' % (run.cost_cents / 100) }} €
+                        {%- else %}<span class="text-not-important">—</span>{% endif %}</td>
                     <td>{{ run.started_dt | format_datetime }}</td>
                 </tr>
             {% endfor %}

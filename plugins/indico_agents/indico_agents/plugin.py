@@ -58,6 +58,7 @@ class AgentsPlugin(IndicoPlugin):
         'research_provider': '',
         'registry_provider': '',
         'model_provider': '',
+        'model_providers': '',
         'egress_allowlist': '',
     }
 

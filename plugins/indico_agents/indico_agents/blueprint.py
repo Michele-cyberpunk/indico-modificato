@@ -5,12 +5,14 @@
 
 from indico.core.plugins import IndicoPluginBlueprint
 
-from indico_agents.controllers import RHAgentsDashboard, RHApprovalDecision, RHToggleAgents
+from indico_agents.controllers import (RHAgentModels, RHAgentsDashboard, RHApprovalDecision,
+                                       RHToggleAgents)
 
 
 blueprint = IndicoPluginBlueprint('agents', __name__, url_prefix='/admin/agents')
 
 blueprint.add_url_rule('/', 'dashboard', RHAgentsDashboard)
 blueprint.add_url_rule('/toggle', 'toggle', RHToggleAgents, methods=('POST',))
+blueprint.add_url_rule('/models', 'models', RHAgentModels, methods=('GET', 'POST'))
 blueprint.add_url_rule('/approvals/<int:approval_id>', 'approval_decision', RHApprovalDecision,
                        methods=('POST',))

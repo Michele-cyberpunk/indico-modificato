@@ -1,0 +1,20 @@
+{% macro csrf() %}
+    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+{% endmacro %}
+
+{#- The agent area answers one question in three places — what can this platform
+    do on its own — so the three are peers, not a page with hidden siblings. -#}
+{% macro nav(current) %}
+    <div class="toolbar space-after">
+        <div class="group">
+            {% for endpoint, label in [('agents.dashboard', 'Cruscotto'),
+                                       ('agents.models', 'Modelli')] %}
+                {% if endpoint == current %}
+                    <span class="i-button highlight">{{ label }}</span>
+                {% else %}
+                    <a class="i-button" href="{{ url_for_plugin(endpoint) }}">{{ label }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+{% endmacro %}

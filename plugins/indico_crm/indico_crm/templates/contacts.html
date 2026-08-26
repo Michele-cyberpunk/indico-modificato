@@ -1,4 +1,5 @@
 {% extends 'layout/admin_page.html' %}
+{% from 'crm:_macros.html' import nav %}
 
 {% macro crm_csrf() -%}
     <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
@@ -7,6 +8,8 @@
 {% block title %}{% trans %}Contatti{% endtrans %}{% endblock %}
 
 {% block content %}
+    {{ nav('crm.contacts') }}
+
     <form method="GET" class="crm-search">
         <input type="search" name="q" value="{{ query }}" placeholder="{% trans %}Cerca…{% endtrans %}">
     </form>

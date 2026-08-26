@@ -57,7 +57,7 @@ graph TD
 |---|---|---|---|
 | `indico_ecm` | `plugin_ecm` | 14 | 23 |
 | `indico_crm` | `plugin_crm` | 9 | 5 |
-| `indico_agents` | `plugin_agents` | 5 | 3 |
+| `indico_agents` | `plugin_agents` | 5 | 4 |
 | `indico_integrations` | `plugin_integrations` | 1 | — |
 
 ## Dove sta cosa, in `indico_ecm/services/`
@@ -121,7 +121,7 @@ la cartella prima che l'evento esista, e non crea `EventPerson`.
 cd plugins/indico_ecm    && PYTHONPATH=. python -m pytest indico_ecm    -q -c /dev/null -p no:indico
 cd plugins/indico_crm    && PYTHONPATH=. python -m pytest indico_crm    -q -c /dev/null -p no:indico
 cd plugins/indico_agents && PYTHONPATH=. python -m pytest indico_agents -q -c /dev/null -p no:indico
-# 482 · 40 · 136
+# 482 · 40 · 158
 
 make lint-py     # isort, ruff, backrefs
 ```
@@ -192,6 +192,13 @@ iniziale:
 indico db --plugin <ecm|crm|agents|integrations> migrate -m 'cosa cambia'
 indico db --plugin <ecm|crm|agents|integrations> upgrade
 ```
+
+**Ogni sezione ha una sua navigazione, e sta in un macro.** `_macros.html` di
+ciascun plugin espone `nav()`: l'ECM per evento (9 voci), `admin_nav()` per
+l'area amministrativa (4), il CRM per le sue tre sezioni, gli agenti per le sue
+due. Una pagina nuova si aggiunge alla lista del macro, non con un link sparso:
+il menu laterale porta a **una** pagina per plugin, e senza il macro le altre
+esistono ma non si trovano.
 
 **Nelle pagine si usano le classi di Indico**, non stili inline: `i-button`,
 `i-label accept|warning|danger|disabled`, `i-table-widget`, `i-box`, `i-form`,

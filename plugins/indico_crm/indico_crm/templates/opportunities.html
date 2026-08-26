@@ -1,8 +1,11 @@
 {% extends 'layout/admin_page.html' %}
+{% from 'crm:_macros.html' import nav %}
 
 {% block title %}{% trans %}Opportunità{% endtrans %}{% endblock %}
 
 {% block content %}
+    {{ nav('crm.opportunities') }}
+
     <p>
         <a class="i-button {{ 'highlight' if open_only }}" href="{{ url_for_plugin('crm.opportunities', open_only=1) }}">
             {% trans %}Aperte{% endtrans %}</a>

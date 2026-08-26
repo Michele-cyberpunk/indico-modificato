@@ -539,6 +539,82 @@ def test_without_material_the_automator_builds_nothing(client, csrf):
     assert response.status_code == 302
 
 
+# --- the interface reaches what the backend can do -----------------------------
+
+@pytest.fixture
+def clean_models(context):
+    """No configured models, committed so the next request actually sees it.
+
+    Setting a plugin setting inside the test session is not enough: the client
+    runs its request in its own transaction, and without the commit it reads the
+    previous test's rows.
+    """
+    from indico.core.db import db
+
+    from indico_agents.plugin import AgentsPlugin
+
+    AgentsPlugin.settings.set('model_providers', '')
+    db.session.commit()
+    yield
+    AgentsPlugin.settings.set('model_providers', '')
+    db.session.commit()
+
+
+@pytest.mark.parametrize('path', ('/admin/crm/contacts', '/admin/crm/companies',
+                                  '/admin/crm/opportunities'))
+def test_every_crm_section_can_reach_the_other_two(client, path):
+    # the side menu links only contacts; without the nav the other two sections
+    # exist but cannot be found
+    body = client.get(path).data.decode()
+    for label in ('Contatti', 'Aziende', 'Opportunità'):
+        assert label in body
+
+
+def test_the_agent_area_links_its_two_pages(client):
+    for path in ('/admin/agents/', '/admin/agents/models'):
+        body = client.get(path).data.decode()
+        assert 'Cruscotto' in body
+        assert 'Modelli' in body
+
+
+def test_models_can_be_configured_toggled_and_removed(client, csrf, clean_models):
+    from indico_agents.plugin import AgentsPlugin
+    from indico_agents.runtime import model_registry
+
+    added = client.post('/admin/agents/models',
+                        data={'csrf_token': csrf, 'action': 'add', 'adapter': 'finto',
+                              'kind': 'image', 'model': 'img-1', 'host': 'api.x.example',
+                              'note': 'sfondi'}, follow_redirects=True)
+    assert added.status_code == 200
+    entries = model_registry.parse(AgentsPlugin.settings.get('model_providers'))
+    assert [entry.model for entry in entries] == ['img-1']
+    assert entries[0].kind is model_registry.ModelKind.image
+
+    # a row whose adapter is not installed is kept but labelled, never left looking fine
+    assert 'adapter mancante' in added.data.decode()
+
+    client.post('/admin/agents/models', data={'csrf_token': csrf, 'action': 'toggle', 'index': 0})
+    assert not model_registry.parse(AgentsPlugin.settings.get('model_providers'))[0].enabled
+
+    client.post('/admin/agents/models', data={'csrf_token': csrf, 'action': 'remove', 'index': 0})
+    assert model_registry.parse(AgentsPlugin.settings.get('model_providers')) == ()
+
+
+def test_a_duplicate_model_is_refused_with_a_reason(client, csrf, clean_models):
+    payload = {'csrf_token': csrf, 'action': 'add', 'adapter': 'finto', 'kind': 'text',
+               'model': 'uguale'}
+    client.post('/admin/agents/models', data=payload)
+    again = client.post('/admin/agents/models', data=payload, follow_redirects=True)
+    assert 'già configurato' in again.data.decode()
+
+
+def test_the_dashboard_shows_what_the_models_cost(client):
+    body = client.get('/admin/agents/').data.decode()
+    # a ceiling with no gauge is a promise nobody can check
+    assert 'Spesa dei modelli' in body
+    assert 'Tetto per evento' in body
+
+
 # --- the guest list -----------------------------------------------------------
 
 GUEST_LIST = '''Nome;Cognome;Email;Arrivo

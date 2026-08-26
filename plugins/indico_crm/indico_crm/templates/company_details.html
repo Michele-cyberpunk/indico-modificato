@@ -1,8 +1,11 @@
 {% extends 'layout/admin_page.html' %}
+{% from 'crm:_macros.html' import nav %}
 
 {% block title %}{{ company.name }}{% endblock %}
 
 {% block content %}
+    {{ nav('crm.companies') }}
+
     <section>
         <h3>{{ company.name }}</h3>
         <table class="i-table-widget">

@@ -1,0 +1,144 @@
+{% extends 'layout/admin_page.html' %}
+{% from 'agents:_macros.html' import csrf, nav %}
+
+{% block title %}{% trans %}Modelli{% endtrans %}{% endblock %}
+
+{% block content %}
+    {{ nav('agents.models') }}
+
+    <p>
+        {% trans %}I modelli che questo impianto può usare. Un modello di testo scrive la prosa di
+        una lettera o di un brief dai dati che la piattaforma ha già; uno di immagini prepara una
+        bozza grafica. Nessuno dei due decide un valore regolato: crediti, minuti di presenza e
+        numeri di attestato restano del motore deterministico, e una bozza che li afferma viene
+        rifiutata prima di arrivare a una persona.{% endtrans %}
+    </p>
+
+    {% if not adapters %}
+        <div class="warning-message-box">
+            <div class="message-text">
+                {% trans %}Nessun adapter installato: si possono configurare righe, ma finché non
+                viene installato l'adapter di un fornitore gli strumenti che redigono testo
+                risponderanno «non configurato».{% endtrans %}
+            </div>
+        </div>
+    {% endif %}
+
+    <table class="i-table-widget">
+        <thead>
+            <tr>
+                <th>{% trans %}Adapter{% endtrans %}</th>
+                <th>{% trans %}Produce{% endtrans %}</th>
+                <th>{% trans %}Modello{% endtrans %}</th>
+                <th>{% trans %}Host{% endtrans %}</th>
+                <th>{% trans %}A cosa serve{% endtrans %}</th>
+                <th>{% trans %}Stato{% endtrans %}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in models %}
+                <tr>
+                    <td><code>{{ entry.adapter }}</code>
+                        {%- if adapters and entry.adapter not in adapters %}
+                            <span class="i-label warning small"
+                                  title="{% trans %}La riga è salvata ma non può essere usata finché l'adapter non viene installato.{% endtrans %}">
+                                {% trans %}adapter mancante{% endtrans %}</span>
+                        {%- elif not adapters %}
+                            <span class="i-label warning small">{% trans %}adapter mancante{% endtrans %}</span>
+                        {%- endif %}
+                    </td>
+                    <td>
+                        <span class="i-label small">{{ entry.kind.label }}</span>
+                        {%- if loop.index0 in defaults %}
+                            <small class="text-not-important">{% trans %}predefinito{% endtrans %}</small>
+                        {%- endif %}
+                    </td>
+                    <td>{{ entry.model }}</td>
+                    <td>{{ entry.host or '—' }}</td>
+                    <td><small>{{ entry.note or '—' }}</small></td>
+                    <td>
+                        {%- if entry.enabled %}<span class="i-label accept small">{% trans %}attivo{% endtrans %}</span>
+                        {%- else %}<span class="i-label disabled small">{% trans %}spento{% endtrans %}</span>{% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" style="display:inline">
+                            {{ csrf() }}
+                            <input type="hidden" name="action" value="toggle">
+                            <input type="hidden" name="index" value="{{ loop.index0 }}">
+                            <button class="i-button" type="submit">
+                                {{ 'Spegni' if entry.enabled else 'Accendi' }}
+                            </button>
+                        </form>
+                        <form method="POST" style="display:inline">
+                            {{ csrf() }}
+                            <input type="hidden" name="action" value="remove">
+                            <input type="hidden" name="index" value="{{ loop.index0 }}">
+                            <button class="i-button text-color" type="submit">{% trans %}Rimuovi{% endtrans %}</button>
+                        </form>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="7">{% trans %}Nessun modello configurato: gli agenti restano
+                    deterministici, che è il comportamento predefinito.{% endtrans %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>{% trans %}Aggiungi un modello{% endtrans %}</h3>
+    <form method="POST" class="i-form">
+        {{ csrf() }}
+        <input type="hidden" name="action" value="add">
+        <table class="i-table-widget">
+            <tr>
+                <td>{% trans %}Adapter{% endtrans %}</td>
+                <td>
+                    {% if adapters %}
+                        <select name="adapter">
+                            {% for adapter in adapters %}<option value="{{ adapter }}">{{ adapter }}</option>{% endfor %}
+                        </select>
+                    {% else %}
+                        <input name="adapter" placeholder="nessun adapter installato">
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>{% trans %}Produce{% endtrans %}</td>
+                <td>
+                    <select name="kind">
+                        {% for kind in kinds %}<option value="{{ kind.value }}">{{ kind.label }}</option>{% endfor %}
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>{% trans %}Modello{% endtrans %}</td>
+                <td><input name="model" size="30" placeholder="{% trans %}il nome esatto del fornitore{% endtrans %}"></td>
+            </tr>
+            <tr>
+                <td>{% trans %}Host{% endtrans %}</td>
+                <td><input name="host" size="30" placeholder="api.fornitore.example">
+                    <small class="text-not-important">
+                        {% trans %}deve essere anche fra le destinazioni consentite{% endtrans %}</small></td>
+            </tr>
+            <tr>
+                <td>{% trans %}A cosa serve{% endtrans %}</td>
+                <td><input name="note" size="50" placeholder="{% trans %}es. lettere di routine{% endtrans %}"></td>
+            </tr>
+        </table>
+        <button class="i-button highlight" type="submit">{% trans %}Aggiungi{% endtrans %}</button>
+    </form>
+
+    <h3>{% trans %}Come vengono scelti{% endtrans %}</h3>
+    <p class="text-not-important">
+        {% trans %}Uno strumento chiede un modello del tipo che gli serve e riceve il primo attivo
+        di quel tipo: l'ordine della lista è la preferenza. Spegnere una riga promuove la
+        successiva, senza cancellare nulla.{% endtrans %}
+        {% if ceiling_cents %}
+            {% trans %}La spesa complessiva su un evento si ferma al tetto configurato, verificato
+            prima della chiamata.{% endtrans %}
+        {% else %}
+            {% trans %}Nessun tetto di spesa è configurato: impostarne uno nelle impostazioni del
+            plugin è consigliato prima di attivare un fornitore a pagamento.{% endtrans %}
+        {% endif %}
+    </p>
+{% endblock %}

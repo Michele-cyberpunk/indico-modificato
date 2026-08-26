@@ -39,7 +39,8 @@ configurato lo dichiarano invece di inventare dati.
 | **Import archivio** (`/admin/ecm/import`) | Analisi dell'esportazione del gestionale precedente con le segnalazioni riga per riga |
 | **Da documento a cartella** (`/admin/ecm/automator`) | Si incolla l'email dello sponsor o si caricano gli allegati (txt, Word, PDF, HTML/eml): la pagina estrae codice, date, relatori, specialità e modalità, dice **da quale frase** ha preso ogni valore, elenca ciò che non ha ricavato, mostra i cinque documenti iniziali e scarica la cartella evento in `.zip` già nominata secondo la convenzione del provider |
 | **CRM** (`/admin/crm/…`) | Contatti con ricerca e creazione; scheda contatto con modifica, note, consensi append-only, timeline attività+consensi, collegamenti a Indico ed evidenze; aziende con creazione; scheda azienda con contatti, opportunità ed eventi collegati; opportunità con creazione e filtro aperte/tutte |
-| **Agenti** (`/admin/agents/`) | Stato della coda, esecuzioni recenti, task falliti, coda di approvazione con Approva/Rifiuta, interruttore generale |
+| **Agenti** (`/admin/agents/`) | Stato della coda, spesa dei modelli col tetto accanto, esecuzioni recenti con modello/token/costo, task falliti, coda di approvazione, fonti esterne, corsie della coda, interruttore generale |
+| **Modelli** (`/admin/agents/models`) | I modelli configurati riga per riga: adapter, tipo (testo o immagini), nome del modello, host, a cosa serve, acceso/spento. Il primo attivo di ogni tipo è il predefinito; una riga il cui adapter non è installato resta salvata ma è marcata |
 
 ## Verificato eseguendo, non leggendo
 
@@ -55,8 +56,8 @@ configurato lo dichiarano invece di inventare dati.
 | Coda agenti | dedup, `FOR UPDATE SKIP LOCKED` fra due worker, backoff, recupero del lease di un worker morto, due corsie con lotti e prese diverse |
 | Lista ospiti | lista incollata e foglio `.xlsx`: nomi in maiuscolo e con particelle, accompagnatori contati, righe scartate motivate, navette spezzate per capienza, foglio stampabile |
 | Da documento a cartella | email incollata e allegato Word: codice, data, relatori (particelle comprese) e cartella `0915 CARDIO … 0116-GDBO`, zip da 5 documenti scaricato dalla pagina |
-| **Suite di integrazione** (`plugins/integration_test.py`) | **64 test** su Indico e PostgreSQL reali: pipeline regolatoria, pagine ECM e CRM con creazione contatti/aziende/opportunità, consensi, note, brief albergo dedotto dal timetable |
-| Suite pure (senza database) | **658 test** (482 ecm + 40 crm + 136 agents) |
+| **Suite di integrazione** (`plugins/integration_test.py`) | **71 test** su Indico e PostgreSQL reali: pipeline regolatoria, pagine ECM e CRM con creazione contatti/aziende/opportunità, consensi, note, brief albergo dedotto dal timetable |
+| Suite pure (senza database) | **680 test** (482 ecm + 40 crm + 158 agents) |
 | ruff con la configurazione del repository | pulito |
 
 ## Copertura degli strumenti degli agenti
